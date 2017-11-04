@@ -1,6 +1,6 @@
 use schema::logs;
 
-#[derive(Queryable)]
+#[derive(Debug, Queryable, PartialEq)]
 pub struct Log {
     pub epoch: i64,
     pub remote_addr: Option<String>,
@@ -9,14 +9,14 @@ pub struct Log {
     pub method: Option<String>,
     pub path: Option<String>,
     pub version: Option<String>,
-    pub body_bytes_send: Option<i64>,
+    pub body_bytes_send: Option<i32>,
     pub referer: Option<String>,
     pub user_agent: Option<String>,
     pub host: String,
 }
 
 
-#[derive(Insertable)]
+#[derive(Debug, Insertable, PartialEq)]
 #[table_name="logs"]
 pub struct NewLog<'a> {
     pub epoch: i64,

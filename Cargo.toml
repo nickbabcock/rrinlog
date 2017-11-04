@@ -1,0 +1,17 @@
+[package]
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
+name = "rrinlog"
+version = "0.1.0"
+
+[dependencies]
+error-chain = "0.11.0"
+lazy_static = "0.2.9"
+regex = "0.2.2"
+
+[dependencies.diesel]
+features = ["sqlite"]
+version = "0.16.0"
+
+[dependencies.diesel_codegen]
+features = ["sqlite"]
+version = "0.16.0"

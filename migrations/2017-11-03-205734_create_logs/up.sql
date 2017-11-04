@@ -1,5 +1,6 @@
 CREATE TABLE logs(
-    epoch INT8 PRIMARY KEY NOT NULL,
+    ri INTEGER PRIMARY KEY,
+    epoch INT8 NOT NULL,
     remote_addr TEXT,
     remote_user TEXT,
     status INT,
@@ -12,4 +13,5 @@ CREATE TABLE logs(
     host TEXT NOT NULL
 );
 
-CREATE index idx_host ON logs(host)
+CREATE index idx_epoch on logs(epoch);
+CREATE index idx_host ON logs(host);

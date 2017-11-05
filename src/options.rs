@@ -1,13 +1,15 @@
 #[derive(StructOpt, Debug)]
 #[structopt(name = "rrinlog", about = "Ingests nginx access logs and persists them to SQLite")]
 pub struct Opt {
-    #[structopt(short = "d", long = "dry-run", help = "Print the parsed logs to stdout instead of persisting to the db")]
+    #[structopt(short = "d", long = "dry-run",
+                help = "Print the parsed logs to stdout instead of persisting to the db")]
     pub dry_run: bool,
 
-    #[structopt(short = "b", long = "buffer", help = "Number of log lines to buffer before inserting into db", default_value = "10")]
+    #[structopt(short = "b", long = "buffer",
+                help = "Number of log lines to buffer before inserting into db",
+                default_value = "10")]
     pub buffer: usize,
 
     #[structopt(long = "db", help = "Filepath to sqlite database", default_value = "logs.db")]
     pub db: String,
 }
-

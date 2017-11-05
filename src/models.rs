@@ -18,7 +18,7 @@ pub struct Log {
 
 
 #[derive(Debug, Insertable, PartialEq)]
-#[table_name="logs"]
+#[table_name = "logs"]
 pub struct NewLog<'a> {
     pub epoch: i64,
     pub remote_addr: Option<&'a str>,
@@ -35,7 +35,9 @@ pub struct NewLog<'a> {
 
 impl<'a> fmt::Display for NewLog<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {} {} {} {} {} {} {} {} {}",
+        write!(
+            f,
+            "{} {} {} {} {} {} {} {} {} {} {}",
             self.epoch,
             self.remote_addr.unwrap_or("NA"),
             self.remote_user.unwrap_or("NA"),

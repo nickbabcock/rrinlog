@@ -20,3 +20,6 @@ version = "0.16.0"
 [dependencies.diesel_codegen]
 features = ["sqlite"]
 version = "0.16.0"
+
+[features]
+unstable = []

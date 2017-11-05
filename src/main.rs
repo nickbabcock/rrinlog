@@ -1,4 +1,5 @@
 #![recursion_limit="128"]
+#![cfg_attr(feature = "unstable", feature(test))]
 
 extern crate chrono;
 extern crate structopt;
@@ -48,14 +49,20 @@ fn persist_logs(threshold: usize, db: &str) {
 }
 
 fn dry_run() {
+	let stdout = io::stdout();
+	let mut handle = stdout.lock();
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         match parser::parse_nginx_line(line.unwrap().as_str()) {
             Ok(log) => {
-                println!("line: {:?}", log);
+                if writeln!(&mut handle, "line: {}", log).is_err() {
+                    break;
+                }
             }
             Err(ref e) => {
-                println!("error: {:?}", e.display_chain());
+                if writeln!(&mut handle, "error: {}", e.display_chain()).is_err() {
+                    break;
+                }
             }
         }
     }
@@ -63,16 +70,34 @@ fn dry_run() {
 
 fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
     use schema::logs;
+    use diesel::result::Error;
 
-    let mut a: Vec<_> = Vec::new();
-    for l in buffer {
-        match parser::parse_nginx_line(l.as_str()) {
-            Ok(ng) => a.push(ng),
-            Err(ref e) => error!("{}", e.display_chain())
+    conn.transaction::<_, Error, _>(|| {
+        for l in buffer {
+            match parser::parse_nginx_line(l.as_str()) {
+                Ok(ng) => {
+                    diesel::insert(&ng)
+                        .into(logs::table)
+                        .execute(conn)
+                        .expect("to insert records");
+                }
+                Err(ref e) => error!("{}", e.display_chain())
+            }
         }
-    }
+        Ok(())
+    }).expect("to complete transaction");
+}
 
-    diesel::insert(&a).into(logs::table)
-        .execute(conn)
-        .expect("Error saving new logs");
+#[cfg(all(feature = "unstable", test))]
+mod bench {
+    extern crate test;
+    use parser;
+
+    #[bench]
+	fn bench_parse_nginx(b: &mut test::Bencher) {
+		let line = r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
+		b.iter(|| {
+			assert!(parser::parse_nginx_line(line).is_ok());
+		});
+	}
 }

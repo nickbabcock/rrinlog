@@ -1,4 +1,5 @@
 use schema::logs;
+use std::fmt;
 
 #[derive(Debug, Queryable, PartialEq)]
 pub struct Log {
@@ -32,3 +33,20 @@ pub struct NewLog<'a> {
     pub host: &'a str,
 }
 
+impl<'a> fmt::Display for NewLog<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} {} {} {} {} {} {} {} {} {}",
+            self.epoch,
+            self.remote_addr.unwrap_or("NA"),
+            self.remote_user.unwrap_or("NA"),
+            self.status.unwrap_or(200),
+            self.method.unwrap_or("NA"),
+            self.path.unwrap_or("NA"),
+            self.version.unwrap_or("NA"),
+            self.body_bytes_sent.unwrap_or(0),
+            self.referer.unwrap_or("NA"),
+            self.user_agent.unwrap_or("NA"),
+            self.host
+        )
+    }
+}

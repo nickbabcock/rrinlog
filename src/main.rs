@@ -23,6 +23,8 @@ use std::io::prelude::*;
 use diesel::prelude::*;
 use structopt::StructOpt;
 use error_chain::ChainedError;
+use chrono::prelude::*;
+use env_logger::{LogBuilder, LogTarget};
 
 mod schema;
 mod models;
@@ -30,6 +32,20 @@ mod parser;
 mod options;
 
 fn main() {
+    LogBuilder::new()
+        .format(|record| {
+            format!(
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .parse(&std::env::var("RUST_LOG").unwrap_or_default())
+        .target(LogTarget::Stdout)
+        .init()
+        .expect("Logging to initialize");
+
     let opt = options::Opt::from_args();
     if opt.dry_run {
         dry_run();
@@ -73,6 +89,7 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
     use schema::logs;
     use diesel::result::Error;
 
+    let start = Utc::now();
     conn.transaction::<_, Error, _>(|| {
         for l in buffer {
             match parser::parse_nginx_line(l.as_str()) {
@@ -87,6 +104,13 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
         }
         Ok(())
     }).expect("to complete transaction");
+    let end = Utc::now();
+    let dur = end.signed_duration_since(start);
+    info!(
+        "Parsing and inserting {} records took {}us",
+        buffer.len(),
+        dur.num_microseconds().unwrap()
+    );
 }
 
 #[cfg(all(feature = "unstable", test))]

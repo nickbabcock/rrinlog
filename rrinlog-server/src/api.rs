@@ -10,16 +10,25 @@ pub struct Range {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Target {
     pub target: String,
+
+    #[serde(rename="refId")]
     pub ref_id: String,
+
+    #[serde(rename="type")]
     pub _type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Query {
     pub range: Range,
+
+    #[serde(rename="intervalMs")]
     pub interval_ms: i32,
+
+    #[serde(rename="maxDataPoints")]
     pub max_data_points: i32,
     pub format: String,
+    pub targets: Vec<Target>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -31,14 +40,18 @@ pub struct SeriesResponse {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Column {
     pub text: String,
+
+    #[serde(rename="type")]
     pub _type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TableResponse {
     pub columns: Vec<Column>,
+    
+    #[serde(rename="type")]
     pub _type: String,
-    pub rows: Vec<serde_json::Value>,
+    pub rows: Vec<Vec<serde_json::Value>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -69,5 +82,67 @@ mod tests {
         let resp = SearchResponse(vec!["A".to_string(), "B".to_string()]);
         let actual = serde_json::to_string(&resp).unwrap();
         assert_eq!(actual, r#"["A","B"]"#.to_string());
+    }
+
+    #[test]
+    fn test_table_response_ser() {
+        let resp = TableResponse {
+            columns: vec![Column { text: "Name".to_string(), _type: "Text".to_string() }],
+            _type: "table".to_string(),
+            rows: vec![
+                vec![json!("nick")]
+            ]
+        };
+        let actual = serde_json::to_string(&resp).unwrap();
+        assert_eq!(actual, r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#.to_string());
+    }
+
+    #[test]
+    fn test_query_de() {
+        let d = r#"
+{
+  "panelId": 1,
+  "range": {
+    "from": "2016-10-31T06:33:44.866Z",
+    "to": "2016-10-31T12:33:44.866Z",
+    "raw": {
+      "from": "now-6h",
+      "to": "now"
+    }
+  },
+  "rangeRaw": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "interval": "30s",
+  "intervalMs": 30000,
+  "targets": [
+     { "target": "upper_50", "refId": "A", "type": "timeserie" },
+     { "target": "upper_75", "refId": "B", "type": "timeserie" }
+  ],
+  "format": "json",
+  "maxDataPoints": 550
+}
+"#;
+        let actual: Query = serde_json::from_str(&d).unwrap();
+        assert_eq!(actual.interval_ms, 30000);
+        assert_eq!(actual.max_data_points, 550);
+        assert_eq!(actual.format, "json".to_string());
+        assert_eq!(actual.range, Range {
+            from: Utc.ymd(2016, 10, 31).and_hms_milli(6, 33, 44, 866),
+            to: Utc.ymd(2016, 10, 31).and_hms_milli(12, 33, 44, 866)
+        });
+        assert_eq!(actual.targets, vec![
+            Target {
+                target: "upper_50".to_string(),
+                ref_id: "A".to_string(),
+                _type: "timeserie".to_string(),
+            },
+            Target {
+                target: "upper_75".to_string(),
+                ref_id: "B".to_string(),
+                _type: "timeserie".to_string(),
+            }
+        ]);
     }
 }

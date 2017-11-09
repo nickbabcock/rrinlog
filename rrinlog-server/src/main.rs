@@ -12,6 +12,7 @@ extern crate structopt_derive;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate chrono;
 extern crate env_logger;

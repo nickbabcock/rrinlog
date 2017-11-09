@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Debug, Queryable, PartialEq)]
 pub struct Log {
+    pub ri: i32,
     pub epoch: i64,
     pub remote_addr: Option<String>,
     pub remote_user: Option<String>,

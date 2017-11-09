@@ -1,25 +1,24 @@
 [package]
 authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
-name = "rrinlog"
+name = "rrinlog_core"
 version = "0.1.0"
 
 [dependencies]
 chrono = "0.4.0"
-env_logger = "0.4.3"
 error-chain = "0.11.0"
 lazy_static = "0.2.9"
-log = "0.3.8"
 regex = "0.2.2"
-structopt = "0.1.3"
-structopt-derive = "0.1.3"
-
-[dependencies.diesel]
-features = ["sqlite"]
-version = "0.16.0"
 
 [dependencies.diesel_codegen]
 features = ["sqlite"]
 version = "0.16.0"
 
+[dependencies.diesel]
+features = ["sqlite"]
+version = "0.16.0"
+
 [features]
 unstable = []
+
+[workspace]
+members = ["rrinlog", "rrinlog-server"]

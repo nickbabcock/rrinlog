@@ -1,5 +1,5 @@
 CREATE TABLE logs(
-    ri INTEGER PRIMARY KEY,
+    ri INTEGER PRIMARY KEY NOT NULL,
     epoch INT8 NOT NULL,
     remote_addr TEXT,
     remote_user TEXT,

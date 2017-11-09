@@ -2,21 +2,15 @@
 #![cfg_attr(feature = "unstable", feature(test))]
 
 extern crate chrono;
-#[macro_use]
 extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
 extern crate env_logger;
-#[macro_use]
 extern crate error_chain;
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
-extern crate regex;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate rrinlog_core;
 
 use std::io;
 use std::io::prelude::*;
@@ -25,10 +19,8 @@ use structopt::StructOpt;
 use error_chain::ChainedError;
 use chrono::prelude::*;
 use env_logger::{LogBuilder, LogTarget};
+use rrinlog_core::parser;
 
-mod schema;
-mod models;
-mod parser;
 mod options;
 
 fn main() {
@@ -86,7 +78,7 @@ fn dry_run() {
 }
 
 fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
-    use schema::logs;
+    use rrinlog_core::schema::logs;
     use diesel::result::Error;
 
     let start = Utc::now();
@@ -111,19 +103,4 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
         buffer.len(),
         dur.num_microseconds().unwrap()
     );
-}
-
-#[cfg(all(feature = "unstable", test))]
-mod bench {
-    extern crate test;
-    use parser;
-
-    #[bench]
-    fn bench_parse_nginx(b: &mut test::Bencher) {
-        let line =
-            r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
-        b.iter(|| {
-            assert!(parser::parse_nginx_line(line).is_ok());
-        });
-    }
 }

@@ -32,9 +32,16 @@ pub struct Query {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct SeriesResponse {
+#[serde(untagged)]
+pub enum TargetData {
+    Series(Series),
+    Table(Table)
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Series {
     pub target: String,
-    pub datapoints: Vec<[u32; 2]>,
+    pub datapoints: Vec<[u64; 2]>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -46,7 +53,7 @@ pub struct Column {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct TableResponse {
+pub struct Table {
     pub columns: Vec<Column>,
     
     #[serde(rename="type")]
@@ -61,6 +68,9 @@ pub struct Search {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SearchResponse(pub Vec<String>);
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct QueryResponse(pub Vec<TargetData>);
 
 #[cfg(test)]
 mod tests {
@@ -86,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_table_response_ser() {
-        let resp = TableResponse {
+        let resp = Table {
             columns: vec![Column { text: "Name".to_string(), _type: "Text".to_string() }],
             _type: "table".to_string(),
             rows: vec![
@@ -144,5 +154,31 @@ mod tests {
                 _type: "timeserie".to_string(),
             }
         ]);
+    }
+
+    #[test]
+    fn test_query_table_response_ser() {
+        let resp = Table {
+            columns: vec![Column { text: "Name".to_string(), _type: "Text".to_string() }],
+            _type: "table".to_string(),
+            rows: vec![
+                vec![json!("nick")]
+            ]
+        };
+        let actual = serde_json::to_string(&TargetData::Table(resp)).unwrap();
+        assert_eq!(actual, r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#.to_string());
+    }
+
+    #[test]
+    fn test_query_series_ser() {
+        let resp = Series {
+            target: "my_target".to_string(),
+            datapoints: vec![
+                [861, 1450754160000],
+                [767, 1450754220000]
+            ]
+        };
+        let actual = serde_json::to_string(&TargetData::Series(resp)).unwrap();
+        assert_eq!(actual, r#"{"target":"my_target","datapoints":[[861,1450754160000],[767,1450754220000]]}"#.to_string());
     }
 }

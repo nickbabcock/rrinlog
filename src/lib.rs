@@ -5,11 +5,11 @@ extern crate chrono;
 extern crate diesel;
 #[macro_use]
 extern crate diesel_codegen;
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate error_chain;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 pub mod models;
 pub mod parser;

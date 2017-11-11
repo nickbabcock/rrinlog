@@ -45,7 +45,7 @@ fn index() -> &'static str {
 #[post("/search", format = "application/json", data = "<data>")]
 fn search(data: Json<Search>) -> Json<SearchResponse> {
     debug!("Search received: {:?}", data.0);
-    Json(SearchResponse(vec!["blog_hits".to_string()]))
+    Json(SearchResponse(vec!["blog_hits".to_string(), "sites".to_string()]))
 }
 
 #[post("/query", format = "application/json", data = "<data>")]
@@ -71,7 +71,6 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         "sites" => get_sites(&conn, &data),
         x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),
     };
-
 
     Ok(Json(result?))
 }

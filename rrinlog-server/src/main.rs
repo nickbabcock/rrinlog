@@ -52,9 +52,15 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
 fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>> {
     debug!("Search received: {:?}", data.0);
 
+    // Acquire SQLite connection on each request. This can be considered inefficient, but since
+    // there isn't a roundtrip connection cost the benefit to debugging of never having a stale
+    // connection is well worth it.
     let conn = SqliteConnection::establish(&opt.db)
         .map_err(|e| Error::from(ErrorKind::DbConn(opt.db.to_owned(), e)))?;
 
+    // Grafana can technically ask for more than one target at once. It can ask for "blog_hits" and
+    // "sites" in one request, but we're going to keep it simply and work with only with requests
+    // that ask for one set of data.
     let first: errors::Result<&api::Target> = data.0
         .targets
         .first()
@@ -63,38 +69,46 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
 
 
     let result: errors::Result<QueryResponse> = match first?.target.as_str() {
-        "blog_hits" => {
-            let rows = dao::blog_posts(&conn, &data.range, &opt.ip).map_err(|e| {
-                Error::from(ErrorKind::DbQuery("blog posts".to_string(), e))
-            })?;
-
-            let r: Vec<_> = rows.into_iter()
-                .map(|x| vec![json!(x.referer), json!(x.views)])
-                .collect();
-
-            Ok(QueryResponse(vec![TargetData::Table(create_blog_table(r))]))
-        }
-        "sites" => {
-            let mut rows = dao::sites(&conn, &data.range, data.interval_ms)
-                .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
-            rows.sort_unstable_by_key(|x| x.host.clone());
-
-            let mut v = Vec::new();
-            for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
-                v.push(TargetData::Series(Series {
-                    target: host,
-                    datapoints: points.map(|x| [x.views as u64, x.ep as u64]).collect(),
-                }));
-            }
-
-
-            Ok(QueryResponse(v))
-        }
+        "blog_hits" => get_blog_posts(&conn, &data, opt),
+        "sites" => get_sites(&conn, &data),
         x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),
     };
 
 
     Ok(Json(result?))
+}
+
+fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
+    let mut rows = dao::sites(&conn, &data.range, data.interval_ms)
+        .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
+    rows.sort_unstable_by_key(|x| x.host.clone());
+
+    let mut v = Vec::new();
+    for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
+        v.push(TargetData::Series(Series {
+            target: host,
+            datapoints: points.map(|x| [x.views as u64, x.ep as u64]).collect(),
+        }));
+    }
+
+
+    Ok(QueryResponse(v))
+}
+
+fn get_blog_posts(
+    conn: &SqliteConnection,
+    data: &Query,
+    opt: State<options::Opt>,
+) -> Result<QueryResponse> {
+    let rows = dao::blog_posts(&conn, &data.range, &opt.ip).map_err(|e| {
+        Error::from(ErrorKind::DbQuery("blog posts".to_string(), e))
+    })?;
+
+    let r: Vec<_> = rows.into_iter()
+        .map(|x| vec![json!(x.referer), json!(x.views)])
+        .collect();
+
+    Ok(QueryResponse(vec![TargetData::Table(create_blog_table(r))]))
 }
 
 fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {

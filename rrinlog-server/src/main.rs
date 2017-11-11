@@ -6,6 +6,8 @@ extern crate diesel;
 extern crate diesel_codegen;
 extern crate env_logger;
 #[macro_use]
+extern crate error_chain;
+#[macro_use]
 extern crate log;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -22,6 +24,7 @@ extern crate structopt_derive;
 mod options;
 mod api;
 mod dao;
+mod errors;
 
 use structopt::StructOpt;
 use env_logger::{LogBuilder, LogTarget};
@@ -30,6 +33,7 @@ use rocket::State;
 use diesel::prelude::*;
 use chrono::prelude::*;
 use api::*;
+use errors::*;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -43,17 +47,22 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
 }
 
 #[post("/query", format = "application/json", data = "<data>")]
-fn query(data: Json<Query>, opt: State<options::Opt>) -> Json<QueryResponse> {
+fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>> {
     debug!("Search received: {:?}", data.0);
+
     let conn =
-        SqliteConnection::establish(&opt.db).expect(&format!("Error connecting to {}", opt.db));
-    let rows = dao::blog_posts(&conn, &data.range, &opt.ip).expect("AA");
+        SqliteConnection::establish(&opt.db)
+        .map_err(|e| Error::from(ErrorKind::DbConn(opt.db.to_owned(), e)))?;
+
+    let rows =
+        dao::blog_posts(&conn, &data.range, &opt.ip)
+        .map_err(|e| Error::from(ErrorKind::DbQuery("blog posts".to_string(), e)))?;
 
     let r: Vec<_> = rows.into_iter()
         .map(|x| vec![json!(x.referer), json!(x.views)])
         .collect();
 
-    Json(QueryResponse(vec![TargetData::Table(create_blog_table(r))]))
+    Ok(Json(QueryResponse(vec![TargetData::Table(create_blog_table(r))])))
 }
 
 fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
@@ -73,7 +82,7 @@ fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
     }
 }
 
-fn init_logging() -> Result<(), log::SetLoggerError> {
+fn init_logging() -> std::result::Result<(), log::SetLoggerError> {
     LogBuilder::new()
         .format(|record| {
             format!(

@@ -47,12 +47,17 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Json<QueryResponse> {
     debug!("Search received: {:?}", data.0);
     let conn =
         SqliteConnection::establish(&opt.db).expect(&format!("Error connecting to {}", opt.db));
-    let rows = dao::blog_posts(&conn, &data.range, "67.167.1.208").expect("AA");
+    let rows = dao::blog_posts(&conn, &data.range, &opt.ip).expect("AA");
 
     let r: Vec<_> = rows.into_iter()
         .map(|x| vec![json!(x.referer), json!(x.views)])
         .collect();
-    let response = api::Table {
+
+    Json(QueryResponse(vec![TargetData::Table(create_blog_table(r))]))
+}
+
+fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
+    api::Table {
         _type: "table".to_string(),
         columns: vec![
             api::Column {
@@ -64,13 +69,11 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Json<QueryResponse> {
                 _type: "number".to_string(),
             },
         ],
-        rows: r,
-    };
-
-    Json(QueryResponse(vec![TargetData::Table(response)]))
+        rows: rows,
+    }
 }
 
-fn main() {
+fn init_logging() -> Result<(), log::SetLoggerError> {
     LogBuilder::new()
         .format(|record| {
             format!(
@@ -83,7 +86,10 @@ fn main() {
         .parse(&std::env::var("RUST_LOG").unwrap_or_default())
         .target(LogTarget::Stdout)
         .init()
-        .expect("Logging to initialize");
+}
+
+fn main() {
+    init_logging().expect("Logging to initialize");
     let opt = options::Opt::from_args();
     rocket::ignite()
         .manage(opt)

@@ -20,6 +20,7 @@ extern crate serde_json;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate itertools;
 
 mod options;
 mod api;
@@ -34,6 +35,7 @@ use diesel::prelude::*;
 use chrono::prelude::*;
 use api::*;
 use errors::*;
+use itertools::Itertools;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -54,15 +56,45 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         SqliteConnection::establish(&opt.db)
         .map_err(|e| Error::from(ErrorKind::DbConn(opt.db.to_owned(), e)))?;
 
-    let rows =
-        dao::blog_posts(&conn, &data.range, &opt.ip)
-        .map_err(|e| Error::from(ErrorKind::DbQuery("blog posts".to_string(), e)))?;
+    let first: errors::Result<&api::Target> = data.0.targets.first().ok_or_else(|| Error::from(ErrorKind::OneTarget(data.0.targets.len())));
 
-    let r: Vec<_> = rows.into_iter()
-        .map(|x| vec![json!(x.referer), json!(x.views)])
-        .collect();
 
-    Ok(Json(QueryResponse(vec![TargetData::Table(create_blog_table(r))])))
+
+        let result: errors::Result<QueryResponse> = match first?.target.as_str() {
+            "blog_hits" => {
+                let rows =
+                    dao::blog_posts(&conn, &data.range, &opt.ip)
+                    .map_err(|e| Error::from(ErrorKind::DbQuery("blog posts".to_string(), e)))?;
+
+                let r: Vec<_> = rows.into_iter()
+                    .map(|x| vec![json!(x.referer), json!(x.views)])
+                    .collect();
+
+                Ok(QueryResponse(vec![TargetData::Table(create_blog_table(r))]))
+            },
+            "sites" => {
+                let mut rows =
+                    dao::sites(&conn, &data.range, data.interval_ms)
+                    .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
+                rows.sort_unstable_by_key(|x| x.host.clone());
+                
+                let mut v = Vec::new();
+                for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
+                    v.push(TargetData::Series(Series {
+                        target: host,
+                        datapoints: points.map(|x| [x.views as u64, x.ep as u64]).collect()
+                    }));
+                }
+
+                
+                Ok(QueryResponse(v))
+
+            }
+            x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x))))
+        };
+
+
+    Ok(Json(result?))
 }
 
 fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {

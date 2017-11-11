@@ -12,5 +12,15 @@ error_chain!{
             description("Unable to execute query")
             display("Unable to execute query: {}: {}", desc, err)
         }
+
+        OneTarget(targets: usize) {
+            description("One target expected")
+            display("One target expected: {} received", targets)
+        }
+
+        UnrecognizedTarget(target: String) {
+            description("Unrecognized target")
+            display("Unrecognized target: {}", target)
+        }
     }
 }

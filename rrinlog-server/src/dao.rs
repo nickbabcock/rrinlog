@@ -39,7 +39,7 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
     LoadDsl::load::<BlogPost>(query, conn)
 }
 
-pub fn sites(conn: &SqliteConnection, range: &Range, interval_ms: i64) -> QueryResult<Vec<Sites>> {
+pub fn sites(conn: &SqliteConnection, range: &Range, interval_ms: i32) -> QueryResult<Vec<Sites>> {
     let interval_s = interval_ms / 1000;
     let qs = format!(r#"
 SELECT (epoch / {}) * {} AS nep,

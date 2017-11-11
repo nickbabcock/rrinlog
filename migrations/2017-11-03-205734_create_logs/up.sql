@@ -1,3 +1,4 @@
+PRAGMA journal_mode=WAL;
 CREATE TABLE logs(
     ri INTEGER PRIMARY KEY NOT NULL,
     epoch INT8 NOT NULL,

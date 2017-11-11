@@ -17,6 +17,10 @@ version = "0.16.0"
 features = ["sqlite"]
 version = "0.16.0"
 
+[dependencies.libsqlite3-sys]
+version = "0.8.1"
+features = ["bundled"]
+
 [features]
 unstable = []
 

@@ -24,6 +24,17 @@ use rrinlog_core::parser;
 mod options;
 
 fn main() {
+    init_logging().expect("Logging to initialize");
+
+    let opt = options::Opt::from_args();
+    if opt.dry_run {
+        dry_run();
+    } else {
+        persist_logs(opt.buffer, &opt.db);
+    }
+}
+
+fn init_logging() -> Result<(), log::SetLoggerError> {
     LogBuilder::new()
         .format(|record| {
             format!(
@@ -36,14 +47,6 @@ fn main() {
         .parse(&std::env::var("RUST_LOG").unwrap_or_default())
         .target(LogTarget::Stdout)
         .init()
-        .expect("Logging to initialize");
-
-    let opt = options::Opt::from_args();
-    if opt.dry_run {
-        dry_run();
-    } else {
-        persist_logs(opt.buffer, &opt.db);
-    }
 }
 
 fn persist_logs(threshold: usize, db: &str) {
@@ -78,12 +81,19 @@ fn dry_run() {
     }
 }
 
+/// If SQLite transaction successfully acquired, `insert_buffer` will drain the provided buffer of
+/// log lines even if the line can't be parsed or inserted.
 fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
     use rrinlog_core::schema::logs;
     use diesel::result::Error;
 
     let start = Utc::now();
     let init_len = buffer.len();
+    let mut success = 0;
+
+    // Open a transaction and run a bunch of individual inserts. The transaction is important as
+    // inserts grouped under a single transaction are faster as there are less locks involved. See
+    // diesel pull request for further info: https://github.com/diesel-rs/diesel/pull/1183
     let trans = conn.transaction::<_, Error, _>(|| {
         for l in buffer.drain(..) {
             match parser::parse_nginx_line(l.as_str()) {
@@ -91,9 +101,12 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
                     // If we can't insert our parsed log then our schema not be representative of
                     // the data. The error shouldn't be a sqlite write conflict as that is checked
                     // at the transaction level, but since I'm not a better man I won't assume the
-                    // cause of the error. Instead of panicking, discard the line and log the error.
+                    // cause of the error. Instead of panicking, discard the line and log the
+                    // error.
                     if let Err(ref e) = diesel::insert(&ng).into(logs::table).execute(conn) {
                         error!("Insertion error: {}", e)
+                    } else {
+                        success += 1;
                     }
                 }
 
@@ -102,6 +115,10 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
                 Err(ref e) => error!("Parsing error: {}", e.display_chain()),
             }
         }
+
+        // There are no early returns, so we should always want to commit the transaction. In the
+        // interest of conserving resources and stability, log lines not able to be parsed or
+        // inserted are discarded.
         Ok(())
     });
 
@@ -116,7 +133,8 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
     let end = Utc::now();
     let dur = end.signed_duration_since(start);
     info!(
-        "Parsing and inserting {} records took {}us",
+        "Parsing and inserting {} out of {} records took {}us",
+        success,
         init_len,
         dur.num_microseconds().unwrap()
     );

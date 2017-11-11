@@ -41,7 +41,8 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
 
 pub fn sites(conn: &SqliteConnection, range: &Range, interval_ms: i32) -> QueryResult<Vec<Sites>> {
     let interval_s = interval_ms / 1000;
-    let qs = format!(r#"
+    let qs = format!(
+        r#"
 SELECT (epoch / {}) * {} AS nep,
        host,
        Count(*) AS views
@@ -51,7 +52,11 @@ WHERE  host LIKE "%nbsoftsolutions.com"
        AND epoch < ?
 GROUP BY epoch / ({}),
          host
-"#, interval_s, interval_ms, interval_s);
+"#,
+        interval_s,
+        interval_ms,
+        interval_s
+    );
     let query = sql::<(BigInt, Text, Integer)>(&qs)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp());

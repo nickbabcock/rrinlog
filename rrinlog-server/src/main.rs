@@ -66,7 +66,7 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         .first()
         .ok_or_else(|| Error::from(ErrorKind::OneTarget(data.0.targets.len())));
 
-    let result: errors::Result<QueryResponse> = match first?.target.as_str() {
+    let result = match first?.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, opt),
         "sites" => get_sites(&conn, &data),
         x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),

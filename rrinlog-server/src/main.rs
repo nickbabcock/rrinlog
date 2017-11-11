@@ -66,8 +66,6 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         .first()
         .ok_or_else(|| Error::from(ErrorKind::OneTarget(data.0.targets.len())));
 
-
-
     let result: errors::Result<QueryResponse> = match first?.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, opt),
         "sites" => get_sites(&conn, &data),
@@ -81,6 +79,10 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
 fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
     let mut rows = dao::sites(&conn, &data.range, data.interval_ms)
         .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
+
+    // Just like python, in order to group by host, we need to have the
+    // vector sorted by host.
+    // TODO: Is there someway to sort by string without having to clone?
     rows.sort_unstable_by_key(|x| x.host.clone());
 
     let mut v = Vec::new();
@@ -90,7 +92,6 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
             datapoints: points.map(|x| [x.views as u64, x.ep as u64]).collect(),
         }));
     }
-
 
     Ok(QueryResponse(v))
 }
@@ -104,6 +105,7 @@ fn get_blog_posts(
         Error::from(ErrorKind::DbQuery("blog posts".to_string(), e))
     })?;
 
+    // Grafana expects rows to contain heterogeneous values in the same order as the table columns.
     let r: Vec<_> = rows.into_iter()
         .map(|x| vec![json!(x.referer), json!(x.views)])
         .collect();

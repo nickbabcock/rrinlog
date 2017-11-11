@@ -7,10 +7,10 @@ extern crate env_logger;
 extern crate error_chain;
 #[macro_use]
 extern crate log;
+extern crate rrinlog_core;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
-extern crate rrinlog_core;
 
 use std::io;
 use std::io::prelude::*;

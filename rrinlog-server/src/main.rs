@@ -82,17 +82,38 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
     // Just like python, in order to group by host, we need to have the
     // vector sorted by host.
     // TODO: Is there someway to sort by string without having to clone?
-    rows.sort_unstable_by_key(|x| x.host.clone());
+    rows.sort_unstable_by_key(|x| (x.host.clone(), x.ep));
 
     let mut v = Vec::new();
     for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
         v.push(TargetData::Series(Series {
             target: host,
-            datapoints: points.map(|x| [x.views as u64, x.ep as u64]).collect(),
+            datapoints: fill_datapoints(&data.range, data.interval_ms, points.map(|x| [x.views as u64, x.ep as u64]).collect()),
         }));
     }
 
     Ok(QueryResponse(v))
+}
+
+fn fill_datapoints(range: &Range, interval_ms: i32, points: Vec<[u64; 2]>) -> Vec<[u64; 2]> {
+    let interval_s = (interval_ms / 1000) as i64;
+    let start = range.from.timestamp() / interval_s * i64::from(interval_ms);
+    let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
+
+    let mut result: Vec<[u64; 2]> = Vec::new();
+    let mut cur_ind = 0;
+
+    let mut i = start;
+    while i < end {
+        if cur_ind >= points.len() || points[cur_ind][1] > (i as u64) {
+            result.push([0, i as u64]);
+        } else {
+            result.push(points[cur_ind]);
+            cur_ind += 1;
+        }
+        i += i64::from(interval_ms);
+    }
+    result
 }
 
 fn get_blog_posts(
@@ -151,4 +172,49 @@ fn main() {
         .manage(opt)
         .mount("/", routes![index, search, query])
         .launch();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fill_datapoints_empty() {
+        let rng = Range {
+            from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11)
+        };
+        let actual = fill_datapoints(&rng, 30 * 1000, Vec::new());
+
+        // In an hour there are 120 - 30 second intervals in an hour
+        assert_eq!(actual.len(), 120);
+
+        // Ensure that the gap is interval is upheld
+        assert_eq!(actual[1][1] - actual[0][1], 30 * 1000);
+
+        let first_time = Utc.ymd(2014, 7, 8).and_hms(9, 10, 0).timestamp() as u64;
+        assert_eq!([0, first_time * 1000], actual[0]);
+    }
+
+    #[test]
+    fn fill_datapoints_one_filled() {
+        let rng = Range {
+            from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11)
+        };
+
+        let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 0).timestamp() as u64) * 1000;
+        let elem: [u64; 2] = [1, fill_time];
+
+        let actual = fill_datapoints(&rng, 30 * 1000, vec![elem]);
+
+        // In an hour there are 120 - 30 second intervals in an hour
+        assert_eq!(actual.len(), 120);
+
+        // Ensure that the gap is interval is upheld
+        assert_eq!(actual[2][1] - actual[1][1], 30 * 1000);
+        assert_eq!(actual[3][1] - actual[2][1], 30 * 1000);
+
+        assert_eq!([1, fill_time], actual[2]);
+    }
 }

@@ -79,23 +79,33 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
     let mut rows = dao::sites(conn, &data.range, data.interval_ms)
         .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
 
-    // Just like python, in order to group by host, we need to have the
-    // vector sorted by host.
+    // Just like python, in order to group by host, we need to have the vector sorted by host. We
+    // include sorting by epoch time as grafana expects time to be sorted
     // TODO: Is there someway to sort by string without having to clone?
     rows.sort_unstable_by_key(|x| (x.host.clone(), x.ep));
 
     let mut v = Vec::new();
     for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
+
+        // points is a sparse array of the number of views seen at a given epoch ms.
+        let p: Vec<_> = points.map(|x| [x.views as u64, x.ep as u64]).collect();
+        let datapoints = fill_datapoints(&data.range, data.interval_ms, &p);
+
         v.push(TargetData::Series(Series {
             target: host,
-            datapoints: fill_datapoints(&data.range, data.interval_ms, points.map(|x| [x.views as u64, x.ep as u64]).collect()),
+            datapoints: datapoints,
         }));
     }
 
     Ok(QueryResponse(v))
 }
 
-fn fill_datapoints(range: &Range, interval_ms: i32, points: Vec<[u64; 2]>) -> Vec<[u64; 2]> {
+/// The given points slice may have gaps of data between start and end times. This function will
+/// fill in those gaps with zeroes.
+fn fill_datapoints(range: &Range, interval_ms: i32, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
+    // Clamp the start and end dates given to us by grafana to the nearest divisible interval
+    // that at least is a whole second. Grafana could technically give us an interval that contains
+    // a fraction of a second, but I'm not interested in sub-second deliniations for site views 
     let interval_s = i64::from(interval_ms / 1000);
     let start = range.from.timestamp() / interval_s * i64::from(interval_ms);
     let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
@@ -103,10 +113,11 @@ fn fill_datapoints(range: &Range, interval_ms: i32, points: Vec<[u64; 2]>) -> Ve
     let mut result: Vec<[u64; 2]> = Vec::new();
 
     // We know the exact number of elements that we will be returning so pre-allocate that up
-    // front.
+    // front. (end - start) / step
     result.reserve_exact(((end - start) / i64::from(interval_ms)) as usize);
-    let mut cur_ind = 0;
 
+    // Copy the values from the given slice and fill the gaps with zeroes
+    let mut cur_ind = 0;
     let mut i = start;
     while i < end {
         if cur_ind >= points.len() || points[cur_ind][1] > (i as u64) {
@@ -169,18 +180,22 @@ fn init_logging() -> std::result::Result<(), log::SetLoggerError> {
         .init()
 }
 
-fn main() {
-    init_logging().expect("Logging to initialize");
-    let opt = options::Opt::from_args();
+fn rocket(opt: options::Opt) -> rocket::Rocket {
     rocket::ignite()
         .manage(opt)
         .mount("/", routes![index, search, query])
-        .launch();
+}
+
+fn main() {
+    init_logging().expect("Logging to initialize");
+    rocket(options::Opt::from_args()).launch();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rocket::local::Client;
+    use rocket::http::{Status, ContentType};
 
     #[test]
     fn fill_datapoints_empty() {
@@ -188,7 +203,7 @@ mod tests {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
             to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11)
         };
-        let actual = fill_datapoints(&rng, 30 * 1000, Vec::new());
+        let actual = fill_datapoints(&rng, 30 * 1000, &Vec::new());
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);
@@ -210,7 +225,7 @@ mod tests {
         let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 0).timestamp() as u64) * 1000;
         let elem: [u64; 2] = [1, fill_time];
 
-        let actual = fill_datapoints(&rng, 30 * 1000, vec![elem]);
+        let actual = fill_datapoints(&rng, 30 * 1000, &vec![elem]);
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);
@@ -220,5 +235,38 @@ mod tests {
         assert_eq!(actual[3][1] - actual[2][1], 30 * 1000);
 
         assert_eq!([1, fill_time], actual[2]);
+    }
+
+    #[test]
+    fn test_root_results() {
+        let opt = options::Opt {
+            db: "Some db".to_string(),
+            ip: "Some ip".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let mut response = client.get("/").dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::Plain));
+        assert_eq!(response.body_string(), Some("Hello, world!".into()));
+    }
+
+    #[test]
+    fn test_search_results() {
+        let opt = options::Opt {
+            db: "Some db".to_string(),
+            ip: "Some ip".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let mut response = client.post("/search")
+            .body(r#"{"target":"something"}"#)
+            .header(ContentType::JSON)
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        assert_eq!(response.body_string(), Some(r#"["blog_hits","sites"]"#.into()));
     }
 }

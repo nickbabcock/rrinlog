@@ -1,4 +1,7 @@
-PRAGMA journal_mode=WAL;
+-- When creating a table using diesel's migration, ideally we'd use this pragma
+-- command, but we receive the error "cannot change into wal mode from within a
+-- transaction" instead.
+-- PRAGMA journal_mode=WAL;
 CREATE TABLE logs(
     ri INTEGER PRIMARY KEY NOT NULL,
     epoch INT8 NOT NULL,

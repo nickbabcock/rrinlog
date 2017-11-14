@@ -101,6 +101,10 @@ fn fill_datapoints(range: &Range, interval_ms: i32, points: Vec<[u64; 2]>) -> Ve
     let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
 
     let mut result: Vec<[u64; 2]> = Vec::new();
+
+    // We know the exact number of elements that we will be returning so pre-allocate that up
+    // front.
+    result.reserve_exact(((end - start) / i64::from(interval_ms)) as usize);
     let mut cur_ind = 0;
 
     let mut i = start;

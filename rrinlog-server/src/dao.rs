@@ -1,7 +1,6 @@
 use diesel::prelude::*;
 use diesel::types::*;
 use diesel::expression::sql;
-use chrono::prelude::*;
 use api::*;
 
 #[derive(PartialEq, Debug, Queryable)]

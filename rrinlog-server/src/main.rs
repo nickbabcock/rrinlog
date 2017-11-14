@@ -76,7 +76,7 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
 }
 
 fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
-    let mut rows = dao::sites(&conn, &data.range, data.interval_ms)
+    let mut rows = dao::sites(conn, &data.range, data.interval_ms)
         .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
 
     // Just like python, in order to group by host, we need to have the
@@ -96,7 +96,7 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
 }
 
 fn fill_datapoints(range: &Range, interval_ms: i32, points: Vec<[u64; 2]>) -> Vec<[u64; 2]> {
-    let interval_s = (interval_ms / 1000) as i64;
+    let interval_s = i64::from(interval_ms / 1000);
     let start = range.from.timestamp() / interval_s * i64::from(interval_ms);
     let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
 
@@ -125,7 +125,7 @@ fn get_blog_posts(
     data: &Query,
     opt: State<options::Opt>,
 ) -> Result<QueryResponse> {
-    let rows = dao::blog_posts(&conn, &data.range, &opt.ip).map_err(|e| {
+    let rows = dao::blog_posts(conn, &data.range, &opt.ip).map_err(|e| {
         Error::from(ErrorKind::DbQuery("blog posts".to_string(), e))
     })?;
 

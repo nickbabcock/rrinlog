@@ -1,5 +1,6 @@
 use diesel::result::ConnectionError;
 use diesel::result::Error as DsError;
+use chrono::prelude::*;
 
 error_chain!{
     errors {
@@ -21,6 +22,11 @@ error_chain!{
         UnrecognizedTarget(target: String) {
             description("Unrecognized target")
             display("Unrecognized target: {}", target)
+        }
+
+        DatesSwapped(start: DateTime<Utc>, end: DateTime<Utc>) {
+            description("Start and end dates are swapped")
+            display("Start and end dates are swapped. Start: {}, end: {}", start, end)
         }
     }
 }

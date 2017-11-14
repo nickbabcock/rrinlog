@@ -45,7 +45,11 @@ fn index() -> &'static str {
 #[post("/search", format = "application/json", data = "<data>")]
 fn search(data: Json<Search>) -> Json<SearchResponse> {
     debug!("Search received: {:?}", data.0);
-    Json(SearchResponse(vec!["blog_hits".to_string(), "sites".to_string()]))
+    Json(SearchResponse(vec![
+        "blog_hits".to_string(),
+        "sites".to_string(),
+        "outbound_data".to_string()
+    ]))
 }
 
 #[post("/query", format = "application/json", data = "<data>")]
@@ -66,9 +70,16 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         .first()
         .ok_or_else(|| Error::from(ErrorKind::OneTarget(data.0.targets.len())));
 
+    // Our code assumes that `from < to` in calculations for vector sizes. Else resizing the vector
+    // will underflow and panic
+    if data.0.range.from > data.0.range.to {
+        return Err(Error::from(ErrorKind::DatesSwapped(data.0.range.from, data.0.range.to)));
+    }
+
     let result = match first?.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, opt),
         "sites" => get_sites(&conn, &data),
+        "outbound_data" => get_outbound(&conn, &data, opt),
         x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),
     };
 
@@ -111,6 +122,7 @@ fn fill_datapoints(range: &Range, interval_ms: i32, points: &[[u64; 2]]) -> Vec<
     let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
 
     let mut result: Vec<[u64; 2]> = Vec::new();
+    println!("{} {} {} {}", start, end, interval_ms, ((end - start) / i64::from(interval_ms)));
 
     // We know the exact number of elements that we will be returning so pre-allocate that up
     // front. (end - start) / step
@@ -129,6 +141,26 @@ fn fill_datapoints(range: &Range, interval_ms: i32, points: &[[u64; 2]]) -> Vec<
         i += i64::from(interval_ms);
     }
     result
+}
+
+fn get_outbound(
+    conn: &SqliteConnection,
+    data: &Query,
+    opt: State<options::Opt>,
+) -> Result<QueryResponse> {
+    let rows = dao::outbound_data(conn, &data.range, &opt.ip, data.interval_ms).map_err(|e| {
+        Error::from(ErrorKind::DbQuery("outbound data".to_string(), e))
+    })?;
+
+    let p: Vec<_> = rows.iter().map(|x| [x.bytes as u64, x.ep as u64]).collect();
+    let datapoints = fill_datapoints(&data.range, data.interval_ms, &p);
+
+    let elem = TargetData::Series(Series {
+        target: "outbound_data".to_string(),
+        datapoints: datapoints,
+    });
+
+    Ok(QueryResponse(vec![elem]))
 }
 
 fn get_blog_posts(
@@ -267,6 +299,126 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::JSON));
-        assert_eq!(response.body_string(), Some(r#"["blog_hits","sites"]"#.into()));
+        assert_eq!(response.body_string(), Some(r#"["blog_hits","sites","outbound_data"]"#.into()));
+    }
+
+    #[test]
+    fn test_query_blog_results() {
+        let opt = options::Opt {
+            db: "../test-assets/test-access.db".to_string(),
+            ip: "127.0.0.2".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let response = client.post("/query")
+            .body(r#"
+{
+  "panelId": 1,
+  "range": {
+    "from": "2017-11-14T13:00:00.866Z",
+    "to": "2017-11-14T14:00:00.866Z",
+    "raw": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "rangeRaw": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "interval": "30s",
+  "intervalMs": 30000,
+  "targets": [
+     { "target": "blog_hits", "refId": "A", "type": "table" }
+  ],
+  "format": "json",
+  "maxDataPoints": 550
+}
+"#)
+            .header(ContentType::JSON)
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+    }
+
+    #[test]
+    fn test_query_sites_results() {
+        let opt = options::Opt {
+            db: "../test-assets/test-access.db".to_string(),
+            ip: "127.0.0.2".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let response = client.post("/query")
+            .body(r#"
+{
+  "panelId": 1,
+  "range": {
+    "from": "2017-11-14T13:00:00.866Z",
+    "to": "2017-11-14T14:00:00.866Z",
+    "raw": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "rangeRaw": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "interval": "30s",
+  "intervalMs": 30000,
+  "targets": [
+     { "target": "sites", "refId": "A", "type": "table" }
+  ],
+  "format": "json",
+  "maxDataPoints": 550
+}
+"#)
+            .header(ContentType::JSON)
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+    }
+
+    #[test]
+    fn test_query_outbound_results() {
+        let opt = options::Opt {
+            db: "../test-assets/test-access.db".to_string(),
+            ip: "127.0.0.2".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let response = client.post("/query")
+            .body(r#"
+{
+  "panelId": 1,
+  "range": {
+    "from": "2017-11-14T13:00:00.866Z",
+    "to": "2017-11-14T14:00:00.866Z",
+    "raw": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "rangeRaw": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "interval": "30s",
+  "intervalMs": 30000,
+  "targets": [
+     { "target": "outbound_data", "refId": "A", "type": "timeserie" }
+  ],
+  "format": "json",
+  "maxDataPoints": 550
+}
+"#)
+            .header(ContentType::JSON)
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
     }
 }

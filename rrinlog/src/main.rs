@@ -139,3 +139,62 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
         dur.num_microseconds().unwrap()
     );
 }
+
+
+#[cfg(test)]
+mod tests {
+    extern crate assert_cli;
+    extern crate tempdir;
+    extern crate environment;
+
+    use std::path::PathBuf;
+    use std::env;
+
+    #[test]
+    fn test_dry_run_empty_input() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["--dry-run"])
+            .succeeds()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_dry_run_with_input() {
+        let fail_line = "Cats are alright"; 
+        let success_line =
+            r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
+        assert_cli::Assert::main_binary()
+            .with_args(&["--dry-run"])
+            .stdin(&format!("{}\n{}", fail_line, success_line))
+            .succeeds()
+            .stdout().contains("line: ")
+            .stdout().contains("error: ")
+            .unwrap();
+    }
+
+    #[test]
+    fn run_db_test() {
+        let tmp_dir = tempdir::TempDir::new("rrinlog").unwrap();
+        let tmp_path = tmp_dir.path().join("logs.db");
+        let tmp = tmp_path.to_str().unwrap();
+        let migration_dir = PathBuf::from(r"../migrations");
+        let migration = migration_dir.to_str().unwrap();
+        println!("Current dir: {:?}", env::current_dir());
+        assert_cli::Assert::command(&["diesel"])
+            .with_args(&["setup", "--migration-dir", migration, "--database-url", tmp])
+            .succeeds()
+            .unwrap();
+
+        let fail_line = "Cats are alright"; 
+        let success_line =
+            r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
+        assert_cli::Assert::main_binary()
+            .with_env(environment::Environment::inherit().insert("RUST_LOG", "INFO"))
+            .with_args(&["--buffer", "1", "--db", tmp])
+            .stdin(&format!("{}\n{}", fail_line, success_line))
+            .succeeds()
+            .stdout().contains("Parsing and inserting 0 out of 1")
+            .stdout().contains("Parsing and inserting 1 out of 1")
+            .unwrap();
+    }
+}

@@ -32,7 +32,7 @@ ORDER  BY views DESC
 "#;
 
 pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResult<Vec<BlogPost>> {
-    let query = sql::<(Text, Integer)>(&BLOG_POST_QUERY)
+    let query = sql::<(Text, Integer)>(BLOG_POST_QUERY)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
         .bind::<Text, _>(ip);

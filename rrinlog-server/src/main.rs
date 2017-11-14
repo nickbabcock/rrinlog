@@ -48,7 +48,7 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
     Json(SearchResponse(vec![
         "blog_hits".to_string(),
         "sites".to_string(),
-        "outbound_data".to_string()
+        "outbound_data".to_string(),
     ]))
 }
 
@@ -73,7 +73,9 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     // Our code assumes that `from < to` in calculations for vector sizes. Else resizing the vector
     // will underflow and panic
     if data.0.range.from > data.0.range.to {
-        return Err(Error::from(ErrorKind::DatesSwapped(data.0.range.from, data.0.range.to)));
+        return Err(Error::from(
+            ErrorKind::DatesSwapped(data.0.range.from, data.0.range.to),
+        ));
     }
 
     let result = match first?.target.as_str() {
@@ -97,7 +99,6 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
 
     let mut v = Vec::new();
     for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
-
         // points is a sparse array of the number of views seen at a given epoch ms.
         let p: Vec<_> = points.map(|x| [x.views as u64, x.ep as u64]).collect();
         let datapoints = fill_datapoints(&data.range, data.interval_ms, &p);
@@ -116,13 +117,12 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
 fn fill_datapoints(range: &Range, interval_ms: i32, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
     // Clamp the start and end dates given to us by grafana to the nearest divisible interval
     // that at least is a whole second. Grafana could technically give us an interval that contains
-    // a fraction of a second, but I'm not interested in sub-second deliniations for site views 
+    // a fraction of a second, but I'm not interested in sub-second deliniations for site views
     let interval_s = i64::from(interval_ms / 1000);
     let start = range.from.timestamp() / interval_s * i64::from(interval_ms);
     let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
 
     let mut result: Vec<[u64; 2]> = Vec::new();
-    println!("{} {} {} {}", start, end, interval_ms, ((end - start) / i64::from(interval_ms)));
 
     // We know the exact number of elements that we will be returning so pre-allocate that up
     // front. (end - start) / step
@@ -227,13 +227,13 @@ fn main() {
 mod tests {
     use super::*;
     use rocket::local::Client;
-    use rocket::http::{Status, ContentType};
+    use rocket::http::{ContentType, Status};
 
     #[test]
     fn fill_datapoints_empty() {
         let rng = Range {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
-            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11)
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
         };
         let actual = fill_datapoints(&rng, 30 * 1000, &Vec::new());
 
@@ -251,7 +251,7 @@ mod tests {
     fn fill_datapoints_one_filled() {
         let rng = Range {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
-            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11)
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
         };
 
         let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 0).timestamp() as u64) * 1000;
@@ -292,14 +292,18 @@ mod tests {
         };
 
         let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let mut response = client.post("/search")
+        let mut response = client
+            .post("/search")
             .body(r#"{"target":"something"}"#)
             .header(ContentType::JSON)
             .dispatch();
 
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::JSON));
-        assert_eq!(response.body_string(), Some(r#"["blog_hits","sites","outbound_data"]"#.into()));
+        assert_eq!(
+            response.body_string(),
+            Some(r#"["blog_hits","sites","outbound_data"]"#.into())
+        );
     }
 
     #[test]
@@ -310,8 +314,10 @@ mod tests {
         };
 
         let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client.post("/query")
-            .body(r#"
+        let response = client
+            .post("/query")
+            .body(
+                r#"
 {
   "panelId": 1,
   "range": {
@@ -334,7 +340,8 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#)
+"#
+            )
             .header(ContentType::JSON)
             .dispatch();
 
@@ -350,8 +357,10 @@ mod tests {
         };
 
         let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client.post("/query")
-            .body(r#"
+        let response = client
+            .post("/query")
+            .body(
+                r#"
 {
   "panelId": 1,
   "range": {
@@ -374,7 +383,8 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#)
+"#
+            )
             .header(ContentType::JSON)
             .dispatch();
 
@@ -390,8 +400,10 @@ mod tests {
         };
 
         let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client.post("/query")
-            .body(r#"
+        let response = client
+            .post("/query")
+            .body(
+                r#"
 {
   "panelId": 1,
   "range": {
@@ -414,7 +426,8 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#)
+"#
+            )
             .header(ContentType::JSON)
             .dispatch();
 

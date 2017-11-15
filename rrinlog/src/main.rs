@@ -98,11 +98,11 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
         for l in buffer.drain(..) {
             match parser::parse_nginx_line(l.as_str()) {
                 Ok(ng) => {
-                    // If we can't insert our parsed log then our schema not be representative of
-                    // the data. The error shouldn't be a sqlite write conflict as that is checked
-                    // at the transaction level, but since I'm not a better man I won't assume the
-                    // cause of the error. Instead of panicking, discard the line and log the
-                    // error.
+                    // If we can't insert our parsed log then our schema must not be representative
+                    // of the data. The error shouldn't be a sqlite write conflict as that is
+                    // checked at the transaction level, but since I'm not all-knowing I won't
+                    // assume the cause of the error. Instead of panicking, discard the line and
+                    // log the error.
                     if let Err(ref e) = diesel::insert(&ng).into(logs::table).execute(conn) {
                         error!("Insertion error: {}", e)
                     } else {

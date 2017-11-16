@@ -47,7 +47,11 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
     LoadDsl::load::<BlogPost>(query, conn)
 }
 
-pub fn sites(conn: &SqliteConnection, range: &Range, interval: si::Second<i32>) -> QueryResult<Vec<Sites>> {
+pub fn sites(
+    conn: &SqliteConnection,
+    range: &Range,
+    interval: si::Second<i32>,
+) -> QueryResult<Vec<Sites>> {
     // Convert dimensioned argument into dimensionless primitive for sql operations
     let interval_s: i32 = *(interval / si::Second::new(1));
     let qs = format!(

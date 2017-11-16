@@ -4,6 +4,7 @@ extern crate chrono;
 extern crate diesel;
 #[macro_use]
 extern crate diesel_codegen;
+extern crate dimensioned as dim;
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
@@ -21,7 +22,6 @@ extern crate serde_json;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
-extern crate dimensioned as dim;
 
 mod options;
 mod api;
@@ -96,7 +96,11 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     Ok(Json(result?))
 }
 
-fn get_sites(conn: &SqliteConnection, data: &Query, interval: si::Second<i32>) -> Result<QueryResponse> {
+fn get_sites(
+    conn: &SqliteConnection,
+    data: &Query,
+    interval: si::Second<i32>,
+) -> Result<QueryResponse> {
     let mut rows = dao::sites(conn, &data.range, interval)
         .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
 
@@ -350,7 +354,7 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#
+"#,
             )
             .header(ContentType::JSON)
             .dispatch();
@@ -393,7 +397,7 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#
+"#,
             )
             .header(ContentType::JSON)
             .dispatch();
@@ -437,7 +441,7 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#
+"#,
             )
             .header(ContentType::JSON)
             .dispatch();
@@ -480,7 +484,7 @@ mod tests {
   "format": "json",
   "maxDataPoints": 550
 }
-"#
+"#,
             )
             .header(ContentType::JSON)
             .dispatch();

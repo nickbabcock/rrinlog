@@ -18,6 +18,7 @@ env_logger = "0.4.3"
 log = "0.3.8"
 error-chain = "0.11.0"
 itertools = "0.7.2"
+dimensioned = "0.6.0"
 
 [dependencies.diesel]
 features = ["sqlite"]

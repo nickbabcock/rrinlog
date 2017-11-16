@@ -21,6 +21,7 @@ extern crate serde_json;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate dimensioned as dim;
 
 mod options;
 mod api;
@@ -36,6 +37,7 @@ use chrono::prelude::*;
 use api::*;
 use errors::*;
 use itertools::Itertools;
+use dim::si;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -78,18 +80,24 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
         ));
     }
 
+    // If grafana gives us an interval that would be less than a whole second, round to a second.
+    // Also dimension the primitive, so that it is obvious that we're dealing with seconds. This
+    // also protects against grafana giving us a negative interval (which it doesn't, but one
+    // should never trust user input)
+    let interval = si::Second::new(std::cmp::max(data.0.interval_ms / 1000, 1));
+
     let result = match first?.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, opt),
-        "sites" => get_sites(&conn, &data),
-        "outbound_data" => get_outbound(&conn, &data, opt),
+        "sites" => get_sites(&conn, &data, interval),
+        "outbound_data" => get_outbound(&conn, &data, opt, interval),
         x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),
     };
 
     Ok(Json(result?))
 }
 
-fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
-    let mut rows = dao::sites(conn, &data.range, data.interval_ms)
+fn get_sites(conn: &SqliteConnection, data: &Query, interval: si::Second<i32>) -> Result<QueryResponse> {
+    let mut rows = dao::sites(conn, &data.range, interval)
         .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
 
     // Just like python, in order to group by host, we need to have the vector sorted by host. We
@@ -101,7 +109,7 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
     for (host, points) in &rows.into_iter().group_by(|x| x.host.clone()) {
         // points is a sparse array of the number of views seen at a given epoch ms.
         let p: Vec<_> = points.map(|x| [x.views as u64, x.ep as u64]).collect();
-        let datapoints = fill_datapoints(&data.range, data.interval_ms, &p);
+        let datapoints = fill_datapoints(&data.range, interval, &p);
 
         v.push(TargetData::Series(Series {
             target: host,
@@ -114,13 +122,14 @@ fn get_sites(conn: &SqliteConnection, data: &Query) -> Result<QueryResponse> {
 
 /// The given points slice may have gaps of data between start and end times. This function will
 /// fill in those gaps with zeroes.
-fn fill_datapoints(range: &Range, interval_ms: i32, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
+fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
     // Clamp the start and end dates given to us by grafana to the nearest divisible interval
     // that at least is a whole second. Grafana could technically give us an interval that contains
     // a fraction of a second, but I'm not interested in sub-second deliniations for site views
-    let interval_s = i64::from(interval_ms / 1000);
-    let start = range.from.timestamp() / interval_s * i64::from(interval_ms);
-    let end = range.to.timestamp() / interval_s * i64::from(interval_ms);
+    let interval_s: i64 = i64::from(*(interval / si::Second::new(1)));
+    let interval_ms = interval_s * 1000;
+    let start = range.from.timestamp() / interval_s * interval_ms;
+    let end = range.to.timestamp() / interval_s * interval_ms;
 
     let mut result: Vec<[u64; 2]> = Vec::new();
 
@@ -147,13 +156,14 @@ fn get_outbound(
     conn: &SqliteConnection,
     data: &Query,
     opt: State<options::Opt>,
+    interval: si::Second<i32>,
 ) -> Result<QueryResponse> {
-    let rows = dao::outbound_data(conn, &data.range, &opt.ip, data.interval_ms).map_err(|e| {
+    let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval).map_err(|e| {
         Error::from(ErrorKind::DbQuery("outbound data".to_string(), e))
     })?;
 
     let p: Vec<_> = rows.iter().map(|x| [x.bytes as u64, x.ep as u64]).collect();
-    let datapoints = fill_datapoints(&data.range, data.interval_ms, &p);
+    let datapoints = fill_datapoints(&data.range, interval, &p);
 
     let elem = TargetData::Series(Series {
         target: "outbound_data".to_string(),
@@ -235,7 +245,7 @@ mod tests {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
             to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
         };
-        let actual = fill_datapoints(&rng, 30 * 1000, &Vec::new());
+        let actual = fill_datapoints(&rng, si::Second::new(30), &Vec::new());
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);
@@ -257,7 +267,7 @@ mod tests {
         let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 0).timestamp() as u64) * 1000;
         let elem: [u64; 2] = [1, fill_time];
 
-        let actual = fill_datapoints(&rng, 30 * 1000, &vec![elem]);
+        let actual = fill_datapoints(&rng, si::Second::new(30), &vec![elem]);
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);
@@ -377,6 +387,50 @@ mod tests {
   },
   "interval": "30s",
   "intervalMs": 30000,
+  "targets": [
+     { "target": "sites", "refId": "A", "type": "table" }
+  ],
+  "format": "json",
+  "maxDataPoints": 550
+}
+"#
+            )
+            .header(ContentType::JSON)
+            .dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::JSON));
+    }
+
+    // Should not fail when the interval is less than a second
+    #[test]
+    fn test_query_sites_tiny_results() {
+        let opt = options::Opt {
+            db: "../test-assets/test-access.db".to_string(),
+            ip: "127.0.0.2".to_string(),
+        };
+
+        let client = Client::new(rocket(opt)).expect("valid rocket instance");
+        let response = client
+            .post("/query")
+            .body(
+                r#"
+{
+  "panelId": 1,
+  "range": {
+    "from": "2017-11-14T13:00:00.866Z",
+    "to": "2017-11-14T14:00:00.866Z",
+    "raw": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "rangeRaw": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "interval": "50ms",
+  "intervalMs": 50,
   "targets": [
      { "target": "sites", "refId": "A", "type": "table" }
   ],

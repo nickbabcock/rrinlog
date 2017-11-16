@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use diesel::types::*;
 use diesel::expression::sql;
 use api::*;
+use dim::si;
 
 #[derive(PartialEq, Debug, Queryable)]
 pub struct BlogPost {
@@ -46,11 +47,12 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
     LoadDsl::load::<BlogPost>(query, conn)
 }
 
-pub fn sites(conn: &SqliteConnection, range: &Range, interval_ms: i32) -> QueryResult<Vec<Sites>> {
-    let interval_s = interval_ms / 1000;
+pub fn sites(conn: &SqliteConnection, range: &Range, interval: si::Second<i32>) -> QueryResult<Vec<Sites>> {
+    // Convert dimensioned argument into dimensionless primitive for sql operations
+    let interval_s: i32 = *(interval / si::Second::new(1));
     let qs = format!(
         r#"
-SELECT (epoch / {}) * {} AS ep,
+SELECT (epoch / {}) * {} * 1000 AS ep,
        host,
        Count(*) AS views
 FROM   logs
@@ -61,7 +63,7 @@ GROUP BY epoch / ({}),
          host
 "#,
         interval_s,
-        interval_ms,
+        interval_s,
         interval_s
     );
 
@@ -75,12 +77,13 @@ pub fn outbound_data(
     conn: &SqliteConnection,
     range: &Range,
     ip: &str,
-    interval_ms: i32,
+    interval: si::Second<i32>,
 ) -> QueryResult<Vec<OutboundData>> {
-    let interval_s = interval_ms / 1000;
+    // Convert dimensioned argument into dimensionless primitive for sql operations
+    let interval_s: i32 = *(interval / si::Second::new(1));
     let qs = format!(
         r#"
-SELECT (epoch / {}) * {} AS ep,
+SELECT (epoch / {}) * {} * 1000 AS ep,
        COUNT(*) AS views,
        SUM(body_bytes_sent) as data
 FROM   logs
@@ -91,7 +94,7 @@ GROUP BY epoch / ({})
 ORDER BY ep
 "#,
         interval_s,
-        interval_ms,
+        interval_s,
         interval_s
     );
 
@@ -105,6 +108,7 @@ ORDER BY ep
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::prelude::*;
 
     #[test]
     fn test_blog_posts() {
@@ -193,7 +197,7 @@ mod tests {
             to: Utc.ymd(2017, 11, 14).and_hms(14, 0, 3),
         };
 
-        let result = sites(&conn, &rng, 30000).expect("results");
+        let result = sites(&conn, &rng, si::Second::new(30)).expect("results");
         assert_eq!(18, result.len());
         assert_eq!(
             Sites {
@@ -214,7 +218,7 @@ mod tests {
             to: Utc.ymd(2017, 11, 14).and_hms(14, 0, 3),
         };
 
-        let result = outbound_data(&conn, &rng, "127.0.0.2", 30000).expect("results");
+        let result = outbound_data(&conn, &rng, "127.0.0.2", si::Second::new(30)).expect("results");
         assert_eq!(18, result.len());
         assert_eq!(
             OutboundData {

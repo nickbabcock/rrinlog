@@ -38,7 +38,7 @@ GROUP  BY referer
 ORDER  BY views DESC
 ```
 
-This SQL query is tailored to me and how my blog is setup, so make no mistake that the intended audience with thsi query is soley me :smile:
+This SQL query is tailored to me and how my blog is setup, so make no mistake that the intended audience with this query is soley me :smile:
 
 ### Limited Endpoints
 

@@ -4,5 +4,6 @@ Description=Provides Grafana JSON API to nginx access logs stored in a sqlite da
 [Service]
 Type=simple
 WorkingDirectory=/tank/containers/rrinlog
-ExecStart=RUST_LOG=info ./rrinlog-server'
+ExecStart=/tank/containers/rrinlog/rrinlog-server --ip <enter ip>
 StandardOutput=journal+console
+Environment="RUST_LOG=info"

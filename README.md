@@ -1,6 +1,6 @@
 # rrinlog
 
-rrinlog is my attempt at [Replacing Elasticsearch with Rust and SQLite](https://nbsoftsolutions.com/blog/replacing-elasticsearch-with-rust-and-sqlite) for my nginx access logs. Success has been outstanding, with a 100x reduction in memory, 1000x reduction in CPU usage, and 100x reduction in disk usage.
+rrinlog is my attempt at [Replacing Elasticsearch with Rust and SQLite](https://nbsoftsolutions.com/blog/replacing-elasticsearch-with-rust-and-sqlite) for my nginx access logs, as Elasticsearch is a resource hungry application even at idle. rrinlog's success has been outstanding, with a 100x reduction in memory, 1000x reduction in CPU usage, and 100x reduction in disk usage.
 
 This project contains two binaries:
 

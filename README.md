@@ -11,13 +11,15 @@ This project currently isn't meant at replacing Elasticsearch for the general po
 
 ### Custon Nginx Access Log
 
-Your nginx access log format must be in the following format:
+`rrinlog` ingests a custom nginx access log format:
 
 ```
 log_format vhost    '$remote_addr - $remote_user [$time_local] '
                     '"$request" $status $body_bytes_sent '
                     '"$http_referer" "$http_user_agent" "$host"';
 ```
+
+Any other format would likely result in parsing errors.
 
 ### Hardcoded SQL Queries
 

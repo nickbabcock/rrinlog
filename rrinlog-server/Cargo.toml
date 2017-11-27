@@ -1,24 +1,26 @@
 [package]
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 name = "rrinlog-server"
 version = "0.1.0"
-authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 
 [dependencies]
-chrono = { version = "0.4.0", features = ["serde"] }
-structopt = "0.1.3"
-structopt-derive = "0.1.3"
-rrinlog_core = { path = ".." }
-rocket = "0.3.3"
-rocket_contrib = "0.3.3"
-rocket_codegen = "0.3.3"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
+dimensioned = "0.6.0"
 env_logger = "0.4.3"
-log = "0.3.8"
 error-chain = "0.11.0"
 itertools = "0.7.2"
-dimensioned = "0.6.0"
+log = "0.3.8"
+rocket = "0.3.3"
+rocket_codegen = "0.3.3"
+rocket_contrib = "0.3.3"
+serde = "1.0.21"
+serde_derive = "1.0.21"
+serde_json = "1.0.6"
+structopt = "0.1.5"
+structopt-derive = "0.1.5"
+
+[dependencies.chrono]
+features = ["serde"]
+version = "0.4.0"
 
 [dependencies.diesel]
 features = ["sqlite"]
@@ -27,3 +29,6 @@ version = "0.16.0"
 [dependencies.diesel_codegen]
 features = ["sqlite"]
 version = "0.16.0"
+
+[dependencies.rrinlog_core]
+path = ".."

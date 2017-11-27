@@ -6,23 +6,26 @@ version = "0.1.0"
 [dependencies]
 chrono = "0.4.0"
 error-chain = "0.11.0"
-lazy_static = "0.2.9"
+lazy_static = "0.2.11"
 regex = "0.2.2"
-
-[dependencies.diesel_codegen]
-features = ["sqlite"]
-version = "0.16.0"
 
 [dependencies.diesel]
 features = ["sqlite"]
 version = "0.16.0"
 
+[dependencies.diesel_codegen]
+features = ["sqlite"]
+version = "0.16.0"
+
 [dependencies.libsqlite3-sys]
-version = "0.8.1"
 features = ["bundled"]
+version = "0.8.1"
 
 [features]
 unstable = []
 
 [workspace]
-members = ["rrinlog", "rrinlog-server"]
+members = [
+    "rrinlog",
+    "rrinlog-server",
+]

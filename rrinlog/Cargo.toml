@@ -1,22 +1,24 @@
 [package]
+authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 name = "rrinlog"
 version = "0.1.0"
-authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 
 [dependencies]
-structopt = "0.1.3"
-structopt-derive = "0.1.3"
 chrono = "0.4.0"
 env_logger = "0.4.3"
-log = "0.3.8"
-rrinlog_core = { path = ".." }
 error-chain = "0.11.0"
+log = "0.3.8"
+structopt = "0.1.5"
+structopt-derive = "0.1.5"
 
 [dependencies.diesel]
 features = ["sqlite"]
 version = "0.16.0"
 
+[dependencies.rrinlog_core]
+path = ".."
+
 [dev-dependencies]
-assert_cli = "0.5"
-tempdir = "0.3"
-environment = "0.1"
+assert_cli = "0.5.4"
+environment = "0.1.1"
+tempdir = "0.3.5"

@@ -54,26 +54,24 @@ pub fn sites(
 ) -> QueryResult<Vec<Sites>> {
     // Convert dimensioned argument into dimensionless primitive for sql operations
     let interval_s: i32 = *(interval / si::Second::new(1));
-    let qs = format!(
-        r#"
-SELECT (epoch / {}) * {} * 1000 AS ep,
+    let qs = r#"
+SELECT (epoch / ?) * ? * 1000 AS ep,
        host,
        Count(*) AS views
 FROM   logs
 WHERE  host LIKE "%nbsoftsolutions.com"
        AND epoch >= ?
        AND epoch < ?
-GROUP BY epoch / ({}),
+GROUP BY epoch / ?,
          host
-"#,
-        interval_s,
-        interval_s,
-        interval_s
-    );
+"#;
 
     let query = sql::<(BigInt, Text, Integer)>(&qs)
+        .bind::<Integer, _>(interval_s)
+        .bind::<Integer, _>(interval_s)
         .bind::<BigInt, _>(range.from.timestamp())
-        .bind::<BigInt, _>(range.to.timestamp());
+        .bind::<BigInt, _>(range.to.timestamp())
+        .bind::<Integer, _>(interval_s);
     LoadDsl::load::<Sites>(query, conn)
 }
 

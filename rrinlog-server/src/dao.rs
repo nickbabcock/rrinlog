@@ -1,27 +1,60 @@
 use diesel::prelude::*;
 use diesel::types::*;
-use diesel::expression::sql;
+use diesel::sql_query;
+use diesel::query_source::QueryableByName;
+use diesel::sqlite::Sqlite;
+use diesel::row::NamedRow;
+use std::error::Error;
 use api::*;
 use dim::si;
 
-#[derive(PartialEq, Debug, Queryable)]
+#[derive(PartialEq, Debug)]
 pub struct BlogPost {
     pub referer: String,
     pub views: i32,
 }
 
-#[derive(PartialEq, Debug, Queryable)]
+impl QueryableByName<Sqlite> for BlogPost {
+    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
+        Ok(BlogPost {
+            referer: row.get::<Text, _>("referer")?,
+            views: row.get::<Integer, _>("views")?,
+        })
+    }
+}
+
+#[derive(PartialEq, Debug)]
 pub struct Sites {
     pub ep: i64,
     pub host: String,
     pub views: i32,
 }
 
-#[derive(PartialEq, Debug, Queryable)]
+impl QueryableByName<Sqlite> for Sites {
+    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
+        Ok(Sites {
+            ep: row.get::<BigInt, _>("ep")?,
+            host: row.get::<Text, _>("host")?,
+            views: row.get::<Integer, _>("views")?,
+        })
+    }
+}
+
+#[derive(PartialEq, Debug)]
 pub struct OutboundData {
     pub ep: i64,
     pub views: i32,
     pub bytes: i64,
+}
+
+impl QueryableByName<Sqlite> for OutboundData {
+    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
+        Ok(OutboundData {
+            ep: row.get::<BigInt, _>("ep")?,
+            views: row.get::<Integer, _>("views")?,
+            bytes: row.get::<BigInt, _>("data")?,
+        })
+    }
 }
 
 static BLOG_POST_QUERY: &'static str = r#"
@@ -40,11 +73,11 @@ ORDER  BY views DESC
 "#;
 
 pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResult<Vec<BlogPost>> {
-    let query = sql::<(Text, Integer)>(BLOG_POST_QUERY)
+    sql_query(BLOG_POST_QUERY)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
-        .bind::<Text, _>(ip);
-    LoadDsl::load::<BlogPost>(query, conn)
+        .bind::<Text, _>(ip)
+        .load(conn)
 }
 
 pub fn sites(
@@ -66,13 +99,13 @@ GROUP BY epoch / ?,
          host
 "#;
 
-    let query = sql::<(BigInt, Text, Integer)>(&qs)
+    sql_query(qs)
         .bind::<Integer, _>(interval_s)
         .bind::<Integer, _>(interval_s)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
-        .bind::<Integer, _>(interval_s);
-    LoadDsl::load::<Sites>(query, conn)
+        .bind::<Integer, _>(interval_s)
+        .load(conn)
 }
 
 pub fn outbound_data(
@@ -100,11 +133,11 @@ ORDER BY ep
         interval_s
     );
 
-    let query = sql::<(BigInt, Integer, BigInt)>(&qs)
+    sql_query(qs)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
-        .bind::<Text, _>(ip);
-    LoadDsl::load::<OutboundData>(query, conn)
+        .bind::<Text, _>(ip)
+        .load(conn)
 }
 
 #[cfg(test)]

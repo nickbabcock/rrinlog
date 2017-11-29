@@ -2,8 +2,6 @@
 #![plugin(rocket_codegen)]
 extern crate chrono;
 extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
 extern crate dimensioned as dim;
 extern crate env_logger;
 #[macro_use]

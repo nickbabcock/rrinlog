@@ -103,7 +103,7 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
                     // checked at the transaction level, but since I'm not all-knowing I won't
                     // assume the cause of the error. Instead of panicking, discard the line and
                     // log the error.
-                    if let Err(ref e) = diesel::insert(&ng).into(logs::table).execute(conn) {
+                    if let Err(ref e) = diesel::insert_into(logs::table).values(&ng).execute(conn) {
                         error!("Insertion error: {}", e)
                     } else {
                         success += 1;

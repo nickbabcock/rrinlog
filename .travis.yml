@@ -4,6 +4,8 @@ rust:
   - beta
   - nightly
 script:
+  - cargo install diesel_cli
+  - DATABASE_URL=logs.db diesel migration run
   - cargo test -p rrinlog_core
   - cargo test -p rrinlog
   - if [ $TRAVIS_RUST_VERSION == "nightly" ]; then cargo test -p rrinlog-server; fi

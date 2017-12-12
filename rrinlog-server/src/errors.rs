@@ -2,31 +2,20 @@ use diesel::result::ConnectionError;
 use diesel::result::Error as DsError;
 use chrono::prelude::*;
 
-error_chain!{
-    errors {
-        DbConn(db: String, ds: ConnectionError) {
-            description("Unable to connect to database")
-            display("Unable to connect to database `{}` {}", db, ds)
-        }
+#[derive(Fail, Debug)]
+pub enum DataError {
+    #[fail(display = "Unable to connecto database {}: {}", _0, _1)]
+    DbConn(String, #[cause] ConnectionError),
 
-        DbQuery(desc: String, err: DsError) {
-            description("Unable to execute query")
-            display("Unable to execute query: {}: {}", desc, err)
-        }
+    #[fail(display = "Unable to execute query: {}: {}", _0, _1)]
+    DbQuery(String, #[cause] DsError),
 
-        OneTarget(targets: usize) {
-            description("One target expected")
-            display("One target expected: {} received", targets)
-        }
+    #[fail(display = "One target expected: {} received", _0)]
+    OneTarget(usize),
 
-        UnrecognizedTarget(target: String) {
-            description("Unrecognized target")
-            display("Unrecognized target: {}", target)
-        }
+    #[fail(display = "Unrecognized target: {}", _0)]
+    UnrecognizedTarget(String),
 
-        DatesSwapped(start: DateTime<Utc>, end: DateTime<Utc>) {
-            description("Start and end dates are swapped")
-            display("Start and end dates are swapped. Start: {}, end: {}", start, end)
-        }
-    }
+    #[fail(display = "Start and end dates are swapped. Start: {}, end: {}", _0, _1)]
+    DatesSwapped(DateTime<Utc>, DateTime<Utc>),
 }

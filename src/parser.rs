@@ -1,26 +1,15 @@
 use regex::Regex;
 use chrono::prelude::*;
 
-mod errors {
-    error_chain!{
-        errors {
-            NoMatch(text: String) {
-                description("Text did not match regex")
-                display("Text did not match regex `{}`", text)
-            }
-
-            InvalidDate(text: String) {
-                description("Text could not be parsed into date")
-                display("Text could not be parsed into date `{}`", text)
-            }
-        }
-    }
+#[derive(Fail, Debug)]
+pub enum ParseError {
+    #[fail(display = "Text did not match regex `{}`", _0)] NoMatch(String),
+    #[fail(display = "Text could not be parsed into date `{}`", _0)] InvalidDate(String),
 }
 
 use models::*;
-use self::errors::*;
 
-pub fn parse_nginx_line<'a>(text: &'a str) -> Result<NewLog<'a>> {
+pub fn parse_nginx_line<'a>(text: &'a str) -> Result<NewLog<'a>, ParseError> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r#"(?x)
         (?P<remote_addr>[^\s]+)
@@ -65,15 +54,15 @@ pub fn parse_nginx_line<'a>(text: &'a str) -> Result<NewLog<'a>> {
             host: caps.name("host").unwrap().as_str(),
         })
     } else {
-        Err(Error::from(ErrorKind::NoMatch(String::from(text))))
+        Err(ParseError::NoMatch(String::from(text)))
     }
 }
 
-pub fn parse_date(text: &str) -> Result<i64> {
+pub fn parse_date(text: &str) -> Result<i64, ParseError> {
     if let Ok(dt) = DateTime::parse_from_str(text, "%d/%b/%Y:%H:%M:%S %z") {
         Ok(dt.timestamp())
     } else {
-        Err(Error::from(ErrorKind::InvalidDate(String::from(text))))
+        Err(ParseError::InvalidDate(String::from(text)))
     }
 }
 

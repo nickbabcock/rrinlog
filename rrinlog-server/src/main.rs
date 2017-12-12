@@ -5,7 +5,7 @@ extern crate diesel;
 extern crate dimensioned as dim;
 extern crate env_logger;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate itertools;
 #[macro_use]
 extern crate log;
@@ -33,9 +33,10 @@ use rocket::State;
 use diesel::prelude::*;
 use chrono::prelude::*;
 use api::*;
-use errors::*;
+use errors::DataError;
 use itertools::Itertools;
 use dim::si;
+use failure::Error;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -53,29 +54,27 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
 }
 
 #[post("/query", format = "application/json", data = "<data>")]
-fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>> {
+fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>, Error> {
     debug!("Search received: {:?}", data.0);
 
     // Acquire SQLite connection on each request. This can be considered inefficient, but since
     // there isn't a roundtrip connection cost the benefit to debugging of never having a stale
     // connection is well worth it.
     let conn = SqliteConnection::establish(&opt.db)
-        .map_err(|e| Error::from(ErrorKind::DbConn(opt.db.to_owned(), e)))?;
+        .map_err(|e| DataError::DbConn(opt.db.to_owned(), e))?;
 
     // Grafana can technically ask for more than one target at once. It can ask for "blog_hits" and
     // "sites" in one request, but we're going to keep it simply and work with only with requests
     // that ask for one set of data.
-    let first: errors::Result<&api::Target> = data.0
+    let first = data.0
         .targets
         .first()
-        .ok_or_else(|| Error::from(ErrorKind::OneTarget(data.0.targets.len())));
+        .ok_or_else(|| DataError::OneTarget(data.0.targets.len()))?;
 
     // Our code assumes that `from < to` in calculations for vector sizes. Else resizing the vector
     // will underflow and panic
     if data.0.range.from > data.0.range.to {
-        return Err(Error::from(
-            ErrorKind::DatesSwapped(data.0.range.from, data.0.range.to),
-        ));
+        return Err(DataError::DatesSwapped(data.0.range.from, data.0.range.to).into());
     }
 
     // If grafana gives us an interval that would be less than a whole second, round to a second.
@@ -84,11 +83,11 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     // should never trust user input)
     let interval = si::Second::new(std::cmp::max(data.0.interval_ms / 1000, 1));
 
-    let result = match first?.target.as_str() {
+    let result = match first.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, opt),
         "sites" => get_sites(&conn, &data, interval),
         "outbound_data" => get_outbound(&conn, &data, opt, interval),
-        x => Err(Error::from(ErrorKind::UnrecognizedTarget(String::from(x)))),
+        x => Err(DataError::UnrecognizedTarget(String::from(x)).into()),
     };
 
     Ok(Json(result?))
@@ -98,9 +97,9 @@ fn get_sites(
     conn: &SqliteConnection,
     data: &Query,
     interval: si::Second<i32>,
-) -> Result<QueryResponse> {
+) -> Result<QueryResponse, Error> {
     let mut rows = dao::sites(conn, &data.range, interval)
-        .map_err(|e| Error::from(ErrorKind::DbQuery("sites".to_string(), e)))?;
+        .map_err(|e| DataError::DbQuery("sites".to_string(), e))?;
 
     // Just like python, in order to group by host, we need to have the vector sorted by host. We
     // include sorting by epoch time as grafana expects time to be sorted
@@ -159,9 +158,9 @@ fn get_outbound(
     data: &Query,
     opt: State<options::Opt>,
     interval: si::Second<i32>,
-) -> Result<QueryResponse> {
+) -> Result<QueryResponse, Error> {
     let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval).map_err(|e| {
-        Error::from(ErrorKind::DbQuery("outbound data".to_string(), e))
+        DataError::DbQuery("outbound data".to_string(), e)
     })?;
 
     let p: Vec<_> = rows.iter().map(|x| [x.bytes as u64, x.ep as u64]).collect();
@@ -179,9 +178,9 @@ fn get_blog_posts(
     conn: &SqliteConnection,
     data: &Query,
     opt: State<options::Opt>,
-) -> Result<QueryResponse> {
+) -> Result<QueryResponse, Error> {
     let rows = dao::blog_posts(conn, &data.range, &opt.ip).map_err(|e| {
-        Error::from(ErrorKind::DbQuery("blog posts".to_string(), e))
+        DataError::DbQuery("blog posts".to_string(), e)
     })?;
 
     // Grafana expects rows to contain heterogeneous values in the same order as the table columns.
@@ -209,7 +208,7 @@ fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
     }
 }
 
-fn init_logging() -> std::result::Result<(), log::SetLoggerError> {
+fn init_logging() -> Result<(), log::SetLoggerError> {
     LogBuilder::new()
         .format(|record| {
             format!(

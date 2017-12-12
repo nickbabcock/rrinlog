@@ -6,7 +6,7 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_infer_schema;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;

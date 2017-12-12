@@ -4,7 +4,7 @@
 extern crate chrono;
 extern crate diesel;
 extern crate env_logger;
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate log;
 extern crate rrinlog_core;
@@ -16,7 +16,6 @@ use std::io;
 use std::io::prelude::*;
 use diesel::prelude::*;
 use structopt::StructOpt;
-use error_chain::ChainedError;
 use chrono::prelude::*;
 use env_logger::{LogBuilder, LogTarget};
 use rrinlog_core::parser;
@@ -74,7 +73,7 @@ fn dry_run() {
             Ok(log) => if writeln!(&mut handle, "line: {}", log).is_err() {
                 break;
             },
-            Err(ref e) => if writeln!(&mut handle, "error: {}", e.display_chain()).is_err() {
+            Err(ref e) => if writeln!(&mut handle, "error: {}", e).is_err() {
                 break;
             },
         }
@@ -112,7 +111,7 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
 
                 // If we can't parse a line, yeah that sucks but it's bound to happen so discard
                 // the line after it's logged for the attentive sysadmin
-                Err(ref e) => error!("Parsing error: {}", e.display_chain()),
+                Err(ref e) => error!("Parsing error: {}", e),
             }
         }
 

@@ -6,7 +6,7 @@ version = "0.1.0"
 [dependencies]
 dimensioned = "0.6.0"
 env_logger = "0.4.3"
-error-chain = "0.11.0"
+failure = "0.1.1"
 itertools = "0.7.2"
 log = "0.3.8"
 rocket = "0.3.3"

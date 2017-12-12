@@ -1,7 +1,7 @@
 use regex::Regex;
 use chrono::prelude::*;
 
-#[derive(Fail, Debug)]
+#[derive(Fail, Debug, PartialEq, Clone)]
 pub enum ParseError {
     #[fail(display = "Text did not match regex `{}`", _0)] NoMatch(String),
     #[fail(display = "Text could not be parsed into date `{}`", _0)] InvalidDate(String),
@@ -77,6 +77,15 @@ mod tests {
             .and_hms(6, 49, 45);
         let actual = parse_date("03/Nov/2017:06:49:45 -0500").unwrap();
         assert_eq!(expected.timestamp(), actual);
+    }
+
+    #[test]
+    fn test_parse_bad_date() {
+        let actual = parse_date("2017-12-01");
+        assert!(actual.is_err());
+        let err: ParseError = actual.unwrap_err();
+        let s = format!("{}", err);
+        assert_eq!("Text could not be parsed into date `2017-12-01`", s);
     }
 
     #[test]

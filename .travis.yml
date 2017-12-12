@@ -1,0 +1,9 @@
+language: rust
+rust: 
+  - stable
+  - beta
+  - nightly
+script:
+  - cargo test -p rrinlog_core
+  - cargo test -p rrinlog
+  - if [ $TRAVIS_RUST_VERSION == "nightly" ]; then cargo test -p rrinlog-server; fi

@@ -13,7 +13,7 @@ structopt-derive = "0.1.5"
 
 [dependencies.diesel]
 features = ["sqlite"]
-version = "0.99.0"
+version = "1"
 
 [dependencies.rrinlog_core]
 path = ".."

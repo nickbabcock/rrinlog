@@ -11,11 +11,11 @@ lazy_static = "1.0.0"
 
 [dependencies.diesel]
 features = ["sqlite"]
-version = "0.99.0"
+version = "1"
 
 [dependencies.diesel_infer_schema]
 features = ["sqlite"]
-version = "0.99.0"
+version = "1"
 
 [dependencies.libsqlite3-sys]
 features = ["bundled"]

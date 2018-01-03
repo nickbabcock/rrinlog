@@ -1,60 +1,27 @@
 use diesel::prelude::*;
 use diesel::types::*;
 use diesel::sql_query;
-use diesel::query_source::QueryableByName;
-use diesel::sqlite::Sqlite;
-use diesel::row::NamedRow;
-use std::error::Error;
 use api::*;
 use dim::si;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, QueryableByName)]
 pub struct BlogPost {
-    pub referer: String,
-    pub views: i32,
+    #[sql_type = "Text"] pub referer: String,
+    #[sql_type = "Integer"] pub views: i32,
 }
 
-impl QueryableByName<Sqlite> for BlogPost {
-    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
-        Ok(BlogPost {
-            referer: row.get::<Text, _>("referer")?,
-            views: row.get::<Integer, _>("views")?,
-        })
-    }
-}
-
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, QueryableByName)]
 pub struct Sites {
-    pub ep: i64,
-    pub host: String,
-    pub views: i32,
+    #[sql_type = "BigInt"] pub ep: i64,
+    #[sql_type = "Text"] pub host: String,
+    #[sql_type = "Integer"] pub views: i32,
 }
 
-impl QueryableByName<Sqlite> for Sites {
-    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
-        Ok(Sites {
-            ep: row.get::<BigInt, _>("ep")?,
-            host: row.get::<Text, _>("host")?,
-            views: row.get::<Integer, _>("views")?,
-        })
-    }
-}
-
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, QueryableByName)]
 pub struct OutboundData {
-    pub ep: i64,
-    pub views: i32,
-    pub bytes: i64,
-}
-
-impl QueryableByName<Sqlite> for OutboundData {
-    fn build<R: NamedRow<Sqlite>>(row: &R) -> Result<Self, Box<Error + Send + Sync>> {
-        Ok(OutboundData {
-            ep: row.get::<BigInt, _>("ep")?,
-            views: row.get::<Integer, _>("views")?,
-            bytes: row.get::<BigInt, _>("data")?,
-        })
-    }
+    #[sql_type = "BigInt"] pub ep: i64,
+    #[sql_type = "Integer"] pub views: i32,
+    #[sql_type = "BigInt"] #[column_name(data)] pub bytes: i64,
 }
 
 static BLOG_POST_QUERY: &'static str = r#"

@@ -4,10 +4,10 @@ name = "rrinlog_core"
 version = "0.1.0"
 
 [dependencies]
-chrono = "0.4.0"
+chrono = "0.4"
 failure = "0.1.1"
-regex = "0.2.2"
-lazy_static = "1.0.0"
+regex = "0.2"
+lazy_static = "1"
 
 [dependencies.diesel]
 features = ["sqlite"]
@@ -19,7 +19,7 @@ version = "1"
 
 [dependencies.libsqlite3-sys]
 features = ["bundled"]
-version = "0.8.1"
+version = "0.9.1"
 
 [features]
 unstable = []

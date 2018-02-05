@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use diesel::types::*;
+use diesel::sql_types::*;
 use diesel::sql_query;
 use api::*;
 use dim::si;
@@ -21,7 +21,7 @@ pub struct Sites {
 pub struct OutboundData {
     #[sql_type = "BigInt"] pub ep: i64,
     #[sql_type = "Integer"] pub views: i32,
-    #[sql_type = "BigInt"] #[column_name(data)] pub bytes: i64,
+    #[sql_type = "BigInt"] #[column_name = "data"] pub bytes: i64,
 }
 
 static BLOG_POST_QUERY: &'static str = r#"

@@ -8,8 +8,7 @@ chrono = "0.4.0"
 env_logger = "0.4.3"
 failure = "0.1.1"
 log = "0.3.8"
-structopt = "0.1.5"
-structopt-derive = "0.1.5"
+structopt = "0.2"
 
 [dependencies.diesel]
 features = ["sqlite"]

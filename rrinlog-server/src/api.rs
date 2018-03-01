@@ -23,7 +23,6 @@ pub struct Query {
     #[serde(rename = "intervalMs")] pub interval_ms: i32,
 
     #[serde(rename = "maxDataPoints")] pub max_data_points: i32,
-    pub format: String,
     pub targets: Vec<Target>,
 }
 
@@ -137,7 +136,6 @@ mod tests {
         let actual: Query = serde_json::from_str(&d).unwrap();
         assert_eq!(actual.interval_ms, 30000);
         assert_eq!(actual.max_data_points, 550);
-        assert_eq!(actual.format, "json".to_string());
         assert_eq!(
             actual.range,
             Range {

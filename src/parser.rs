@@ -9,7 +9,7 @@ pub enum ParseError {
 
 use models::*;
 
-pub fn parse_nginx_line<'a>(text: &'a str) -> Result<NewLog<'a>, ParseError> {
+pub fn parse_nginx_line(text: &str) -> Result<NewLog, ParseError> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r#"(?x)
         (?P<remote_addr>[^\s]+)

@@ -134,11 +134,9 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
     let start = range.from.timestamp() / interval_s * interval_ms;
     let end = range.to.timestamp() / interval_s * interval_ms;
 
-    let mut result: Vec<[u64; 2]> = Vec::new();
-
     // We know the exact number of elements that we will be returning so pre-allocate that up
     // front. (end - start) / step
-    result.reserve_exact(((end - start) / interval_ms) as usize);
+    let mut result: Vec<[u64; 2]> = Vec::with_capacity(((end - start) / interval_ms) as usize);
 
     // Copy the values from the given slice and fill the gaps with zeroes
     let mut cur_ind = 0;

@@ -43,6 +43,7 @@ fn index() -> &'static str {
     "Hello, world!"
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #[post("/search", format = "application/json", data = "<data>")]
 fn search(data: Json<Search>) -> Json<SearchResponse> {
     debug!("Search received: {:?}", data.0);
@@ -53,6 +54,7 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
     ]))
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #[post("/query", format = "application/json", data = "<data>")]
 fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>, Error> {
     debug!("Search received: {:?}", data.0);
@@ -84,9 +86,9 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     let interval = si::Second::new(std::cmp::max(data.0.interval_ms / 1000, 1));
 
     let result = match first.target.as_str() {
-        "blog_hits" => get_blog_posts(&conn, &data, opt),
+        "blog_hits" => get_blog_posts(&conn, &data, &opt),
         "sites" => get_sites(&conn, &data, interval),
-        "outbound_data" => get_outbound(&conn, &data, opt, interval),
+        "outbound_data" => get_outbound(&conn, &data, &opt, interval),
         x => Err(DataError::UnrecognizedTarget(String::from(x)).into()),
     };
 
@@ -156,7 +158,7 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
 fn get_outbound(
     conn: &SqliteConnection,
     data: &Query,
-    opt: State<options::Opt>,
+    opt: &State<options::Opt>,
     interval: si::Second<i32>,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval).map_err(|e| {
@@ -177,7 +179,7 @@ fn get_outbound(
 fn get_blog_posts(
     conn: &SqliteConnection,
     data: &Query,
-    opt: State<options::Opt>,
+    opt: &State<options::Opt>,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::blog_posts(conn, &data.range, &opt.ip).map_err(|e| {
         DataError::DbQuery("blog posts".to_string(), e)

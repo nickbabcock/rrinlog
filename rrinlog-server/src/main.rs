@@ -114,7 +114,7 @@ fn get_sites(
 
         v.push(TargetData::Series(Series {
             target: host,
-            datapoints: datapoints,
+            datapoints,
         }));
     }
 
@@ -136,7 +136,7 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
 
     // We know the exact number of elements that we will be returning so pre-allocate that up
     // front. (end - start) / step
-    result.reserve_exact(((end - start) / i64::from(interval_ms)) as usize);
+    result.reserve_exact(((end - start) / interval_ms) as usize);
 
     // Copy the values from the given slice and fill the gaps with zeroes
     let mut cur_ind = 0;
@@ -148,7 +148,7 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
             result.push(points[cur_ind]);
             cur_ind += 1;
         }
-        i += i64::from(interval_ms);
+        i += interval_ms;
     }
     result
 }
@@ -168,7 +168,7 @@ fn get_outbound(
 
     let elem = TargetData::Series(Series {
         target: "outbound_data".to_string(),
-        datapoints: datapoints,
+        datapoints,
     });
 
     Ok(QueryResponse(vec![elem]))
@@ -204,7 +204,7 @@ fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
                 _type: "number".to_string(),
             },
         ],
-        rows: rows,
+        rows,
     }
 }
 

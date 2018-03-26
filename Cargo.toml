@@ -21,6 +21,13 @@ version = "1"
 features = ["bundled"]
 version = "0.9.1"
 
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "rrinlog"
+harness = false
+
 [features]
 unstable = []
 

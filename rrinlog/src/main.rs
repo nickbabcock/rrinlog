@@ -1,5 +1,4 @@
 #![recursion_limit = "128"]
-#![cfg_attr(feature = "unstable", feature(test))]
 
 extern crate chrono;
 extern crate diesel;

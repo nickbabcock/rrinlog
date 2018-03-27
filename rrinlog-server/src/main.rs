@@ -133,24 +133,19 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
     let interval_ms = interval_s * 1000;
     let start = range.from.timestamp() / interval_s * interval_ms;
     let end = range.to.timestamp() / interval_s * interval_ms;
+    let elements = (end - start) / interval_ms;
 
-    // We know the exact number of elements that we will be returning so pre-allocate that up
-    // front. (end - start) / step
-    let mut result: Vec<[u64; 2]> = Vec::with_capacity(((end - start) / interval_ms) as usize);
+    let mut data: Vec<u64> = vec![0; elements as usize];
+    let time: Vec<u64> = (0..elements)
+        .map(|i| (i * interval_ms + start) as u64)
+        .collect();
 
-    // Copy the values from the given slice and fill the gaps with zeroes
-    let mut cur_ind = 0;
-    let mut i = start;
-    while i < end {
-        if cur_ind >= points.len() || points[cur_ind][1] > (i as u64) {
-            result.push([0, i as u64]);
-        } else {
-            result.push(points[cur_ind]);
-            cur_ind += 1;
-        }
-        i += interval_ms;
+    for point in points {
+        let index = (point[1] - (start as u64)) / (interval_ms as u64);
+        data[index as usize] = point[0];
     }
-    result
+
+    data.into_iter().zip(time).map(|(data, time)| [data, time]).collect()
 }
 
 fn get_outbound(

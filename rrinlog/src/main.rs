@@ -17,6 +17,7 @@ use structopt::StructOpt;
 use chrono::prelude::*;
 use env_logger::{LogBuilder, LogTarget};
 use rrinlog_core::parser;
+use rrinlog_core::models::NewLog;
 
 mod options;
 
@@ -82,56 +83,47 @@ fn dry_run() {
 /// log lines even if the line can't be parsed or inserted.
 fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
     use rrinlog_core::schema::logs;
-    use diesel::result::Error;
 
     let start = Utc::now();
     let init_len = buffer.len();
-    let mut success = 0;
 
-    // Open a transaction and run a bunch of individual inserts. The transaction is important as
-    // inserts grouped under a single transaction are faster as there are less locks involved. See
-    // diesel pull request for further info: https://github.com/diesel-rs/diesel/pull/1183
-    let trans = conn.transaction::<_, Error, _>(|| {
-        for l in buffer.drain(..) {
-            match parser::parse_nginx_line(l.as_str()) {
-                Ok(ng) => {
-                    // If we can't insert our parsed log then our schema must not be representative
-                    // of the data. The error shouldn't be a sqlite write conflict as that is
-                    // checked at the transaction level, but since I'm not all-knowing I won't
-                    // assume the cause of the error. Instead of panicking, discard the line and
-                    // log the error.
-                    if let Err(ref e) = diesel::insert_into(logs::table).values(&ng).execute(conn) {
-                        error!("Insertion error: {}", e)
-                    } else {
-                        success += 1;
-                    }
-                }
-
+    let successes = {
+        let lines: Vec<NewLog> = buffer
+            .iter()
+            .map(|line| parser::parse_nginx_line(line.as_str()))
+            .inspect(|line| {
                 // If we can't parse a line, yeah that sucks but it's bound to happen so discard
                 // the line after it's logged for the attentive sysadmin
-                Err(ref e) => error!("Parsing error: {}", e),
-            }
+                if let Err(ref e) = *line {
+                    error!("Parsing error: {}", e);
+                }
+            })
+            .flat_map(|x| x)
+            .collect();
+
+        // Now that we have all the successfully parsed logs, insert them into the db
+        let db_res = diesel::insert_into(logs::table)
+            .values(&lines)
+            .execute(conn);
+
+        // If inserting into the db fails, log the error, but still discard the messages, so we
+        // remain light on memory usage. Never panic as we're supposed to be a long lived
+        // application
+        if let Err(ref e) = db_res {
+            error!("Insertion error: {}", e);
+            return;
         }
 
-        // There are no early returns, so we should always want to commit the transaction. In the
-        // interest of conserving resources and stability, log lines not able to be parsed or
-        // inserted are discarded.
-        Ok(())
-    });
+        lines.len()
+    };
 
-    // If SQLite is unable to acquire needed locks for the write to succeed (for instance if WAL
-    // mode is off and there is a reader), the transaction will error. Don't panic as rrinlog is
-    // supposed to be a long lived application. We'll simply wait for the next line to try again
-    if let Err(ref e) = trans {
-        error!("Unable to complete transaction: {}", e);
-        return;
-    }
+    buffer.clear();
 
     let end = Utc::now();
     let dur = end.signed_duration_since(start);
     info!(
         "Parsing and inserting {} out of {} records took {}us",
-        success,
+        successes,
         init_len,
         dur.num_microseconds().unwrap()
     );

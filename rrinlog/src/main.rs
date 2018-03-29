@@ -49,24 +49,34 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
 
 fn persist_logs(threshold: usize, db: &str) {
     let conn = SqliteConnection::establish(db).expect(&format!("Error connecting to {}", db));
-    let mut buffer: Vec<String> = Vec::new();
+    let mut buffer: Vec<String> = vec![String::new(); threshold];
+    let mut buf_ind = 0;
     let stdin = io::stdin();
-    for line in stdin.lock().lines() {
-        buffer.push(line.unwrap());
-        if buffer.len() >= threshold {
-            insert_buffer(&conn, &mut buffer);
+    let mut locked_stdin = stdin.lock();
+    while locked_stdin.read_line(&mut buffer[buf_ind]).unwrap_or(0) > 0 {
+        buf_ind += 1;
+        if buf_ind >= threshold {
+            insert_buffer(&conn, &buffer);
+            buf_ind = 0;
+
+            // Remove the parsed lines, but keep the allocated space for them
+            for s in &mut buffer {
+                s.clear();
+            }
         }
     }
 
-    insert_buffer(&conn, &mut buffer)
+    insert_buffer(&conn, &buffer)
 }
 
 fn dry_run() {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     let stdin = io::stdin();
-    for line in stdin.lock().lines() {
-        match parser::parse_nginx_line(line.unwrap().as_str()) {
+    let mut line = String::new();
+    let mut locked_stdin = stdin.lock();
+    while locked_stdin.read_line(&mut line).unwrap_or(0) > 0 {
+        match parser::parse_nginx_line(line.as_str()) {
             // Both Ok and Err branches halt writing if the line can't be ouput.
             // For instance, this occurs when rrinlog output is piped to head
             Ok(log) => if writeln!(&mut handle, "line: {}", log).is_err() {
@@ -76,54 +86,50 @@ fn dry_run() {
                 break;
             },
         }
+
+        line.clear();
     }
 }
 
 /// If SQLite transaction successfully acquired, `insert_buffer` will drain the provided buffer of
 /// log lines even if the line can't be parsed or inserted.
-fn insert_buffer(conn: &SqliteConnection, buffer: &mut Vec<String>) {
+fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
     use rrinlog_core::schema::logs;
 
     let start = Utc::now();
     let init_len = buffer.len();
 
-    let successes = {
-        let lines: Vec<NewLog> = buffer
-            .iter()
-            .map(|line| parser::parse_nginx_line(line.as_str()))
-            .inspect(|line| {
-                // If we can't parse a line, yeah that sucks but it's bound to happen so discard
-                // the line after it's logged for the attentive sysadmin
-                if let Err(ref e) = *line {
-                    error!("Parsing error: {}", e);
-                }
-            })
-            .flat_map(|x| x)
-            .collect();
+    let lines: Vec<NewLog> = buffer
+        .iter()
+        .map(|line| parser::parse_nginx_line(line.as_str()))
+        .inspect(|line| {
+            // If we can't parse a line, yeah that sucks but it's bound to happen so discard
+            // the line after it's logged for the attentive sysadmin
+            if let Err(ref e) = *line {
+                error!("Parsing error: {}", e);
+            }
+        })
+        .flat_map(|x| x)
+        .collect();
 
-        // Now that we have all the successfully parsed logs, insert them into the db
-        let db_res = diesel::insert_into(logs::table)
-            .values(&lines)
-            .execute(conn);
+    // Now that we have all the successfully parsed logs, insert them into the db
+    let db_res = diesel::insert_into(logs::table)
+        .values(&lines)
+        .execute(conn);
 
-        // If inserting into the db fails, log the error, but still discard the messages, so we
-        // remain light on memory usage. Never panic as we're supposed to be a long lived
-        // application
-        if let Err(ref e) = db_res {
-            error!("Insertion error: {}", e);
-            return;
-        }
-
-        lines.len()
-    };
-
-    buffer.clear();
+    // If inserting into the db fails, log the error, but still discard the messages, so we
+    // remain light on memory usage. Never panic as we're supposed to be a long lived
+    // application
+    if let Err(ref e) = db_res {
+        error!("Insertion error: {}", e);
+        return;
+    }
 
     let end = Utc::now();
     let dur = end.signed_duration_since(start);
     info!(
         "Parsing and inserting {} out of {} records took {}us",
-        successes,
+        lines.len(),
         init_len,
         dur.num_microseconds().unwrap()
     );

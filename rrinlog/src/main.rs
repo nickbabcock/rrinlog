@@ -49,6 +49,12 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
 
 fn persist_logs(threshold: usize, db: &str) {
     let conn = SqliteConnection::establish(db).expect(&format!("Error connecting to {}", db));
+
+    // To avoid allocating a string for each line read from stdin and to buffer data so that we
+    // batch insert into the db, we keep around the same `n` strings for the whole duration of the
+    // application. Since these strings are kept around forever, they will grow to the maximum url
+    // size allowed by nginx, which defaults to 1k. So if the buffer size is 10, these strings will
+    // contribute a max of 10k to mem usage.
     let mut buffer: Vec<String> = vec![String::new(); threshold];
     let mut buf_ind = 0;
     let stdin = io::stdin();

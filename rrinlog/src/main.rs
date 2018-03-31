@@ -99,7 +99,7 @@ fn dry_run() {
 
 /// If SQLite transaction successfully acquired, `insert_buffer` will drain the provided buffer of
 /// log lines even if the line can't be parsed or inserted.
-fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
+fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
     use rrinlog_core::schema::logs;
 
     let start = Utc::now();
@@ -107,7 +107,7 @@ fn insert_buffer(conn: &SqliteConnection, buffer: &[String]) {
 
     let lines: Vec<NewLog> = buffer
         .iter()
-        .map(|line| parser::parse_nginx_line(line.as_str()))
+        .map(|line| parser::parse_nginx_line(line.as_ref()))
         .inspect(|line| {
             // If we can't parse a line, yeah that sucks but it's bound to happen so discard
             // the line after it's logged for the attentive sysadmin

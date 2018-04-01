@@ -4,7 +4,7 @@ rust:
   - beta
   - nightly
 script:
-  - cargo install diesel_cli
+  - cargo install diesel_cli --no-default-features --features sqlite
   - DATABASE_URL=logs.db diesel migration run
   - cargo test -p rrinlog_core
   - cargo test -p rrinlog

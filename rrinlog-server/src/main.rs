@@ -142,6 +142,10 @@ fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]
 
     for point in points {
         let index = (point[1] - (start as u64)) / (interval_ms as u64);
+        if (index as usize) >= data.len() {
+            error!("point: {}, past end: {}, index: {}, data len: {}, start: {}, interval: {}", point[1], end, index, data.len(), start, interval_s);
+            continue;
+        }
         data[index as usize] = point[0];
     }
 

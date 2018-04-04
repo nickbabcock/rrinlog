@@ -20,9 +20,9 @@ pub struct Target {
 pub struct Query {
     pub range: Range,
 
-    #[serde(rename = "intervalMs")] pub interval_ms: i32,
+    #[serde(rename = "intervalMs")] pub interval_ms: i64,
 
-    #[serde(rename = "maxDataPoints")] pub max_data_points: i32,
+    #[serde(rename = "maxDataPoints")] pub max_data_points: i64,
     pub targets: Vec<Target>,
 }
 

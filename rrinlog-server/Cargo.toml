@@ -17,6 +17,10 @@ serde_derive = "1.0.21"
 serde_json = "1.0.6"
 structopt = "0.2"
 
+[dependencies.uom]
+version = "0.17.0"
+features = ["i64", "si"]
+
 [dependencies.chrono]
 features = ["serde"]
 version = "0.4.0"

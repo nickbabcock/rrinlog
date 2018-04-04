@@ -3,7 +3,6 @@
 extern crate chrono;
 #[macro_use]
 extern crate diesel;
-extern crate dimensioned as dim;
 extern crate env_logger;
 #[macro_use]
 extern crate failure;
@@ -20,6 +19,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate structopt;
+extern crate uom;
 
 mod options;
 mod api;
@@ -35,8 +35,9 @@ use chrono::prelude::*;
 use api::*;
 use errors::DataError;
 use itertools::Itertools;
-use dim::si;
 use failure::Error;
+use uom::si::i64::*;
+use uom::si::time::{millisecond, second};
 
 #[get("/")]
 fn index() -> &'static str {
@@ -83,7 +84,7 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     // Also dimension the primitive, so that it is obvious that we're dealing with seconds. This
     // also protects against grafana giving us a negative interval (which it doesn't, but one
     // should never trust user input)
-    let interval = si::Second::new(std::cmp::max(data.0.interval_ms / 1000, 1));
+    let interval: Time = Time::new::<second>(std::cmp::max(data.0.interval_ms / 1000, 1));
 
     let result = match first.target.as_str() {
         "blog_hits" => get_blog_posts(&conn, &data, &opt),
@@ -98,7 +99,7 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
 fn get_sites(
     conn: &SqliteConnection,
     data: &Query,
-    interval: si::Second<i32>,
+    interval: Time,
 ) -> Result<QueryResponse, Error> {
     let mut rows = dao::sites(conn, &data.range, interval)
         .map_err(|e| DataError::DbQuery("sites".to_string(), e))?;
@@ -125,28 +126,24 @@ fn get_sites(
 
 /// The given points slice may have gaps of data between start and end times. This function will
 /// fill in those gaps with zeroes.
-fn fill_datapoints(range: &Range, interval: si::Second<i32>, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
-    // Clamp the start and end dates given to us by grafana to the nearest divisible interval
-    // that at least is a whole second. Grafana could technically give us an interval that contains
-    // a fraction of a second, but I'm not interested in sub-second deliniations for site views
-    let interval_s: i64 = i64::from(*(interval / si::Second::new(1)));
-    let interval_ms = interval_s * 1000;
-    let start = range.from.timestamp() / interval_s * interval_ms;
-    let end = range.to.timestamp() / interval_s * interval_ms;
-    let elements = (end - start) / interval_ms;
+fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
+    let start = Time::new::<second>(range.from.timestamp());
+    let end = Time::new::<second>(range.to.timestamp());
+    let elements: i64 = ((end - start) / interval).value;
 
     let mut data: Vec<u64> = vec![0; elements as usize];
     let time: Vec<u64> = (0..elements)
-        .map(|i| (i * interval_ms + start) as u64)
+        .map(|i| (i * interval.get(millisecond) + start.get(millisecond)) as u64)
         .collect();
 
     for point in points {
-        let index = (point[1] - (start as u64)) / (interval_ms as u64);
-        if (index as usize) >= data.len() {
-            error!("point: {}, past end: {}, index: {}, data len: {}, start: {}, interval: {}", point[1], end, index, data.len(), start, interval_s);
+        let ptime = Time::new::<millisecond>(point[1] as i64);
+        let index = (((ptime - start) / interval).value) as usize;
+        if index >= data.len() {
+            error!("point: {}, past end: {}, index: {}, data len: {}, start: {}, interval: {}", point[1], end.get(second), index, data.len(), start.get(second), interval.get(second));
             continue;
         }
-        data[index as usize] = point[0];
+        data[index] = point[0];
     }
 
     data.into_iter().zip(time).map(|(data, time)| [data, time]).collect()
@@ -156,7 +153,7 @@ fn get_outbound(
     conn: &SqliteConnection,
     data: &Query,
     opt: &State<options::Opt>,
-    interval: si::Second<i32>,
+    interval: Time,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval).map_err(|e| {
         DataError::DbQuery("outbound data".to_string(), e)
@@ -245,7 +242,7 @@ mod tests {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
             to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
         };
-        let actual = fill_datapoints(&rng, si::Second::new(30), &Vec::new());
+        let actual = fill_datapoints(&rng, Time::new::<second>(30), &Vec::new());
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);
@@ -253,7 +250,7 @@ mod tests {
         // Ensure that the gap is interval is upheld
         assert_eq!(actual[1][1] - actual[0][1], 30 * 1000);
 
-        let first_time = Utc.ymd(2014, 7, 8).and_hms(9, 10, 0).timestamp() as u64;
+        let first_time = Utc.ymd(2014, 7, 8).and_hms(9, 10, 11).timestamp() as u64;
         assert_eq!([0, first_time * 1000], actual[0]);
     }
 
@@ -264,10 +261,10 @@ mod tests {
             to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
         };
 
-        let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 0).timestamp() as u64) * 1000;
+        let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 11).timestamp() as u64) * 1000;
         let elem: [u64; 2] = [1, fill_time];
 
-        let actual = fill_datapoints(&rng, si::Second::new(30), &vec![elem]);
+        let actual = fill_datapoints(&rng, Time::new::<second>(30), &vec![elem]);
 
         // In an hour there are 120 - 30 second intervals in an hour
         assert_eq!(actual.len(), 120);

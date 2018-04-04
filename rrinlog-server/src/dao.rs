@@ -1,8 +1,9 @@
 use diesel::prelude::*;
-use diesel::sql_types::*;
+use diesel::sql_types::{Text, BigInt, Integer};
 use diesel::sql_query;
 use api::*;
-use dim::si;
+use uom::si::i64::*;
+use uom::si::time::second;
 
 #[derive(PartialEq, Debug, QueryableByName)]
 pub struct BlogPost {
@@ -50,10 +51,8 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
 pub fn sites(
     conn: &SqliteConnection,
     range: &Range,
-    interval: si::Second<i32>,
+    interval: Time,
 ) -> QueryResult<Vec<Sites>> {
-    // Convert dimensioned argument into dimensionless primitive for sql operations
-    let interval_s: i32 = *(interval / si::Second::new(1));
     let qs = r#"
 SELECT (epoch / ?) * ? * 1000 AS ep,
        host,
@@ -67,11 +66,11 @@ GROUP BY epoch / ?,
 "#;
 
     sql_query(qs)
-        .bind::<Integer, _>(interval_s)
-        .bind::<Integer, _>(interval_s)
+        .bind::<Integer, _>(interval.get(second) as i32)
+        .bind::<Integer, _>(interval.get(second) as i32)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
-        .bind::<Integer, _>(interval_s)
+        .bind::<Integer, _>(interval.get(second) as i32)
         .load(conn)
 }
 
@@ -79,10 +78,8 @@ pub fn outbound_data(
     conn: &SqliteConnection,
     range: &Range,
     ip: &str,
-    interval: si::Second<i32>,
+    interval: Time,
 ) -> QueryResult<Vec<OutboundData>> {
-    // Convert dimensioned argument into dimensionless primitive for sql operations
-    let interval_s: i32 = *(interval / si::Second::new(1));
     let qs = format!(
         r#"
 SELECT (epoch / {}) * {} * 1000 AS ep,
@@ -95,9 +92,9 @@ WHERE  epoch >= ?
 GROUP BY epoch / ({})
 ORDER BY ep
 "#,
-        interval_s,
-        interval_s,
-        interval_s
+        interval.get(second),
+        interval.get(second),
+        interval.get(second)
     );
 
     sql_query(qs)
@@ -199,7 +196,7 @@ mod tests {
             to: Utc.ymd(2017, 11, 14).and_hms(14, 0, 3),
         };
 
-        let result = sites(&conn, &rng, si::Second::new(30)).expect("results");
+        let result = sites(&conn, &rng, Time::new::<second>(30)).expect("results");
         assert_eq!(18, result.len());
         assert_eq!(
             Sites {
@@ -220,7 +217,7 @@ mod tests {
             to: Utc.ymd(2017, 11, 14).and_hms(14, 0, 3),
         };
 
-        let result = outbound_data(&conn, &rng, "127.0.0.2", si::Second::new(30)).expect("results");
+        let result = outbound_data(&conn, &rng, "127.0.0.2", Time::new::<second>(30)).expect("results");
         assert_eq!(18, result.len());
         assert_eq!(
             OutboundData {

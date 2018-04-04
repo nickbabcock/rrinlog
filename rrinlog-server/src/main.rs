@@ -139,10 +139,6 @@ fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u
     for point in points {
         let ptime = Time::new::<millisecond>(point[1] as i64);
         let index = (((ptime - start) / interval).value) as usize;
-        if index >= data.len() {
-            error!("point: {}, past end: {}, index: {}, data len: {}, start: {}, interval: {}", point[1], end.get(second), index, data.len(), start.get(second), interval.get(second));
-            continue;
-        }
         data[index] = point[0];
     }
 

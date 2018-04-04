@@ -145,8 +145,8 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
 #[cfg(test)]
 mod tests {
     extern crate assert_cli;
-    extern crate tempdir;
     extern crate environment;
+    extern crate tempdir;
 
     use std::path::PathBuf;
     use std::env;
@@ -161,15 +161,17 @@ mod tests {
 
     #[test]
     fn test_dry_run_with_input() {
-        let fail_line = "Cats are alright"; 
+        let fail_line = "Cats are alright";
         let success_line =
             r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
         assert_cli::Assert::main_binary()
             .with_args(&["--dry-run"])
             .stdin(&format!("{}\n{}", fail_line, success_line))
             .succeeds()
-            .stdout().contains("line: ")
-            .stdout().contains("error: ")
+            .stdout()
+            .contains("line: ")
+            .stdout()
+            .contains("error: ")
             .unwrap();
     }
 
@@ -186,7 +188,7 @@ mod tests {
             .succeeds()
             .unwrap();
 
-        let fail_line = "Cats are alright"; 
+        let fail_line = "Cats are alright";
         let success_line =
             r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
         assert_cli::Assert::main_binary()
@@ -194,8 +196,10 @@ mod tests {
             .with_args(&["--buffer", "1", "--db", tmp])
             .stdin(&format!("{}\n{}", fail_line, success_line))
             .succeeds()
-            .stdout().contains("Parsing and inserting 0 out of 1")
-            .stdout().contains("Parsing and inserting 1 out of 1")
+            .stdout()
+            .contains("Parsing and inserting 0 out of 1")
+            .stdout()
+            .contains("Parsing and inserting 1 out of 1")
             .unwrap();
     }
 }

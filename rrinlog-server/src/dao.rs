@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use diesel::sql_types::{Text, BigInt, Integer};
+use diesel::sql_types::{BigInt, Integer, Text};
 use diesel::sql_query;
 use api::*;
 use uom::si::i64::*;
@@ -22,7 +22,9 @@ pub struct Sites {
 pub struct OutboundData {
     #[sql_type = "BigInt"] pub ep: i64,
     #[sql_type = "Integer"] pub views: i32,
-    #[sql_type = "BigInt"] #[column_name = "data"] pub bytes: i64,
+    #[sql_type = "BigInt"]
+    #[column_name = "data"]
+    pub bytes: i64,
 }
 
 static BLOG_POST_QUERY: &'static str = r#"
@@ -48,11 +50,7 @@ pub fn blog_posts(conn: &SqliteConnection, range: &Range, ip: &str) -> QueryResu
         .load(conn)
 }
 
-pub fn sites(
-    conn: &SqliteConnection,
-    range: &Range,
-    interval: Time,
-) -> QueryResult<Vec<Sites>> {
+pub fn sites(conn: &SqliteConnection, range: &Range, interval: Time) -> QueryResult<Vec<Sites>> {
     let qs = r#"
 SELECT (epoch / ?) * ? * 1000 AS ep,
        host,
@@ -140,8 +138,9 @@ mod tests {
         assert_eq!(
             result[2],
             BlogPost {
-                referer: "https://nbsoftsolutions.com/blog/designing-a-rest-api-unix-time-vs-iso-8601"
-                    .to_string(),
+                referer:
+                    "https://nbsoftsolutions.com/blog/designing-a-rest-api-unix-time-vs-iso-8601"
+                        .to_string(),
                 views: 2,
             }
         );
@@ -156,8 +155,9 @@ mod tests {
         assert_eq!(
             result[4],
             BlogPost {
-                referer: "https://nbsoftsolutions.com/blog/high-performance-unsafe-c-code-is-a-lie-redux"
-                    .to_string(),
+                referer:
+                    "https://nbsoftsolutions.com/blog/high-performance-unsafe-c-code-is-a-lie-redux"
+                        .to_string(),
                 views: 1,
             }
         );
@@ -180,8 +180,9 @@ mod tests {
         assert_eq!(
             result[7],
             BlogPost {
-                referer: "https://nbsoftsolutions.com/blog/turning-dropwizard-performance-up-to-eleven"
-                    .to_string(),
+                referer:
+                    "https://nbsoftsolutions.com/blog/turning-dropwizard-performance-up-to-eleven"
+                        .to_string(),
                 views: 1,
             }
         );
@@ -217,7 +218,8 @@ mod tests {
             to: Utc.ymd(2017, 11, 14).and_hms(14, 0, 3),
         };
 
-        let result = outbound_data(&conn, &rng, "127.0.0.2", Time::new::<second>(30)).expect("results");
+        let result =
+            outbound_data(&conn, &rng, "127.0.0.2", Time::new::<second>(30)).expect("results");
         assert_eq!(18, result.len());
         assert_eq!(
             OutboundData {

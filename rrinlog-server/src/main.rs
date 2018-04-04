@@ -63,8 +63,8 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     // Acquire SQLite connection on each request. This can be considered inefficient, but since
     // there isn't a roundtrip connection cost the benefit to debugging of never having a stale
     // connection is well worth it.
-    let conn = SqliteConnection::establish(&opt.db)
-        .map_err(|e| DataError::DbConn(opt.db.to_owned(), e))?;
+    let conn =
+        SqliteConnection::establish(&opt.db).map_err(|e| DataError::DbConn(opt.db.to_owned(), e))?;
 
     // Grafana can technically ask for more than one target at once. It can ask for "blog_hits" and
     // "sites" in one request, but we're going to keep it simply and work with only with requests
@@ -142,7 +142,10 @@ fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u
         data[index] = point[0];
     }
 
-    data.into_iter().zip(time).map(|(data, time)| [data, time]).collect()
+    data.into_iter()
+        .zip(time)
+        .map(|(data, time)| [data, time])
+        .collect()
 }
 
 fn get_outbound(
@@ -151,9 +154,8 @@ fn get_outbound(
     opt: &State<options::Opt>,
     interval: Time,
 ) -> Result<QueryResponse, Error> {
-    let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval).map_err(|e| {
-        DataError::DbQuery("outbound data".to_string(), e)
-    })?;
+    let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval)
+        .map_err(|e| DataError::DbQuery("outbound data".to_string(), e))?;
 
     let p: Vec<_> = rows.iter().map(|x| [x.bytes as u64, x.ep as u64]).collect();
     let datapoints = fill_datapoints(&data.range, interval, &p);
@@ -171,9 +173,8 @@ fn get_blog_posts(
     data: &Query,
     opt: &State<options::Opt>,
 ) -> Result<QueryResponse, Error> {
-    let rows = dao::blog_posts(conn, &data.range, &opt.ip).map_err(|e| {
-        DataError::DbQuery("blog posts".to_string(), e)
-    })?;
+    let rows = dao::blog_posts(conn, &data.range, &opt.ip)
+        .map_err(|e| DataError::DbQuery("blog posts".to_string(), e))?;
 
     // Grafana expects rows to contain heterogeneous values in the same order as the table columns.
     let r: Vec<_> = rows.into_iter()

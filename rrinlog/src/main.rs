@@ -115,7 +115,7 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
                 error!("Parsing error: {}", e);
             }
         })
-        .flat_map(|x| x)
+        .filter_map(Result::ok)
         .collect();
 
     // Now that we have all the successfully parsed logs, insert them into the db

@@ -129,7 +129,7 @@ fn get_sites(
 fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
     let start = Time::new::<second>(range.from.timestamp());
     let end = Time::new::<second>(range.to.timestamp());
-    let elements: i64 = ((end - start) / interval).value;
+    let elements: i64 = i64::from((end - start) / interval);
 
     let mut data: Vec<u64> = vec![0; elements as usize];
     let time: Vec<u64> = (0..elements)

@@ -36,7 +36,13 @@ use uom::si::time::{millisecond, second};
 use actix_web::{http, server, App, HttpRequest, Json, State};
 use actix_web::middleware::Logger;
 
-fn index(_req: HttpRequest<options::Opt>) -> &'static str {
+#[derive(Debug, Clone)]
+struct RinState {
+    pub db: String,
+    pub ip: String,
+}
+
+fn index(_req: HttpRequest<RinState>) -> &'static str {
     "Hello world!"
 }
 
@@ -49,7 +55,7 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
     ]))
 }
 
-fn query(data: (Json<Query>, State<options::Opt>)) -> Result<Json<QueryResponse>, Error> {
+fn query(data: (Json<Query>, State<RinState>)) -> Result<Json<QueryResponse>, Error> {
     let (query, opt) = data;
     debug!("Search received: {:?}", query);
 
@@ -144,7 +150,7 @@ fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u
 fn get_outbound(
     conn: &SqliteConnection,
     data: &Query,
-    opt: &options::Opt,
+    opt: &RinState,
     interval: Time,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval)
@@ -164,7 +170,7 @@ fn get_outbound(
 fn get_blog_posts(
     conn: &SqliteConnection,
     data: &Query,
-    opt: &options::Opt,
+    opt: &RinState,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::blog_posts(conn, &data.range, &opt.ip)
         .map_err(|e| DataError::DbQuery("blog posts".to_string(), e))?;
@@ -209,7 +215,7 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
         .init()
 }
 
-fn create_app(opts: options::Opt) -> App<options::Opt> {
+fn create_app(opts: RinState) -> App<RinState> {
     App::with_state(opts)
         .middleware(Logger::default())
         .resource("/", |r| r.f(index))
@@ -220,8 +226,15 @@ fn create_app(opts: options::Opt) -> App<options::Opt> {
 fn main() {
     init_logging().expect("Logging to initialize");
     let opts = options::Opt::from_args();
-    server::new(move || create_app(opts.clone()))
-        .bind("127.0.0.1:8088")
+    let (addr, state) = {
+        (opts.addr, RinState {
+            db: opts.db,
+            ip: opts.ip,
+        })
+    };
+
+    server::new(move || create_app(state.clone()))
+        .bind(addr)
         .unwrap()
         .run();
 }
@@ -276,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_root_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "Some db".to_string(),
             ip: "Some ip".to_string(),
         };
@@ -294,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_search_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "Some db".to_string(),
             ip: "Some ip".to_string(),
         };
@@ -318,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_query_blog_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "../test-assets/test-access.db".to_string(),
             ip: "127.0.0.2".to_string(),
         };
@@ -361,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_query_sites_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "../test-assets/test-access.db".to_string(),
             ip: "127.0.0.2".to_string(),
         };
@@ -405,7 +418,7 @@ mod tests {
     // Should not fail when the interval is less than a second
     #[test]
     fn test_query_sites_tiny_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "../test-assets/test-access.db".to_string(),
             ip: "127.0.0.2".to_string(),
         };
@@ -448,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_query_outbound_results() {
-        let opt = options::Opt {
+        let opt = RinState {
             db: "../test-assets/test-access.db".to_string(),
             ip: "127.0.0.2".to_string(),
         };

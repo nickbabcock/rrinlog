@@ -4,7 +4,6 @@ name = "rrinlog-server"
 version = "0.1.0"
 
 [dependencies]
-dimensioned = "0.6.0"
 env_logger = "0.4.3"
 failure = "0.1.1"
 itertools = "0.7.2"

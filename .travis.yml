@@ -6,6 +6,4 @@ rust:
 script:
   - cargo install diesel_cli --no-default-features --features sqlite
   - DATABASE_URL=logs.db diesel migration run
-  - cargo test -p rrinlog_core
-  - cargo test -p rrinlog
-  - if [ $TRAVIS_RUST_VERSION == "nightly" ]; then cargo test -p rrinlog-server; fi
+  - cargo test --all

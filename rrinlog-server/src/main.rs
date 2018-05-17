@@ -1,5 +1,4 @@
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
+extern crate actix_web;
 extern crate chrono;
 #[macro_use]
 extern crate diesel;
@@ -9,8 +8,6 @@ extern crate failure;
 extern crate itertools;
 #[macro_use]
 extern crate log;
-extern crate rocket;
-extern crate rocket_contrib;
 extern crate rrinlog_core;
 extern crate serde;
 #[macro_use]
@@ -28,8 +25,6 @@ mod errors;
 
 use structopt::StructOpt;
 use env_logger::{LogBuilder, LogTarget};
-use rocket_contrib::Json;
-use rocket::State;
 use diesel::prelude::*;
 use chrono::prelude::*;
 use api::*;
@@ -38,16 +33,15 @@ use itertools::Itertools;
 use failure::Error;
 use uom::si::i64::*;
 use uom::si::time::{millisecond, second};
+use actix_web::{http, server, App, HttpRequest, Json, State};
+use actix_web::middleware::Logger;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+fn index(_req: HttpRequest<options::Opt>) -> &'static str {
+    "Hello world!"
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-#[post("/search", format = "application/json", data = "<data>")]
 fn search(data: Json<Search>) -> Json<SearchResponse> {
-    debug!("Search received: {:?}", data.0);
+    debug!("Search received: {:?}", data);
     Json(SearchResponse(vec![
         "blog_hits".to_string(),
         "sites".to_string(),
@@ -55,10 +49,9 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
     ]))
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-#[post("/query", format = "application/json", data = "<data>")]
-fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryResponse>, Error> {
-    debug!("Search received: {:?}", data.0);
+fn query(data: (Json<Query>, State<options::Opt>)) -> Result<Json<QueryResponse>, Error> {
+    let (query, opt) = data;
+    debug!("Search received: {:?}", query);
 
     // Acquire SQLite connection on each request. This can be considered inefficient, but since
     // there isn't a roundtrip connection cost the benefit to debugging of never having a stale
@@ -69,27 +62,27 @@ fn query(data: Json<Query>, opt: State<options::Opt>) -> Result<Json<QueryRespon
     // Grafana can technically ask for more than one target at once. It can ask for "blog_hits" and
     // "sites" in one request, but we're going to keep it simply and work with only with requests
     // that ask for one set of data.
-    let first = data.0
+    let first = query
         .targets
         .first()
-        .ok_or_else(|| DataError::OneTarget(data.0.targets.len()))?;
+        .ok_or_else(|| DataError::OneTarget(query.targets.len()))?;
 
     // Our code assumes that `from < to` in calculations for vector sizes. Else resizing the vector
     // will underflow and panic
-    if data.0.range.from > data.0.range.to {
-        return Err(DataError::DatesSwapped(data.0.range.from, data.0.range.to).into());
+    if query.range.from > query.range.to {
+        return Err(DataError::DatesSwapped(query.range.from, query.range.to).into());
     }
 
     // If grafana gives us an interval that would be less than a whole second, round to a second.
     // Also dimension the primitive, so that it is obvious that we're dealing with seconds. This
     // also protects against grafana giving us a negative interval (which it doesn't, but one
     // should never trust user input)
-    let interval: Time = Time::new::<second>(std::cmp::max(data.0.interval_ms / 1000, 1));
+    let interval: Time = Time::new::<second>(std::cmp::max(query.interval_ms / 1000, 1));
 
     let result = match first.target.as_str() {
-        "blog_hits" => get_blog_posts(&conn, &data, &opt),
-        "sites" => get_sites(&conn, &data, interval),
-        "outbound_data" => get_outbound(&conn, &data, &opt, interval),
+        "blog_hits" => get_blog_posts(&conn, &query, &opt),
+        "sites" => get_sites(&conn, &query, interval),
+        "outbound_data" => get_outbound(&conn, &query, &opt, interval),
         x => Err(DataError::UnrecognizedTarget(String::from(x)).into()),
     };
 
@@ -151,7 +144,7 @@ fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u
 fn get_outbound(
     conn: &SqliteConnection,
     data: &Query,
-    opt: &State<options::Opt>,
+    opt: &options::Opt,
     interval: Time,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::outbound_data(conn, &data.range, &opt.ip, interval)
@@ -171,7 +164,7 @@ fn get_outbound(
 fn get_blog_posts(
     conn: &SqliteConnection,
     data: &Query,
-    opt: &State<options::Opt>,
+    opt: &options::Opt,
 ) -> Result<QueryResponse, Error> {
     let rows = dao::blog_posts(conn, &data.range, &opt.ip)
         .map_err(|e| DataError::DbQuery("blog posts".to_string(), e))?;
@@ -216,22 +209,30 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
         .init()
 }
 
-fn rocket(opt: options::Opt) -> rocket::Rocket {
-    rocket::ignite()
-        .manage(opt)
-        .mount("/", routes![index, search, query])
+fn create_app(opts: options::Opt) -> App<options::Opt> {
+    App::with_state(opts)
+        .middleware(Logger::default())
+        .resource("/", |r| r.f(index))
+        .resource("/search", |r| r.method(http::Method::POST).with(search))
+        .resource("/query", |r| r.method(http::Method::POST).with(query))
 }
 
 fn main() {
     init_logging().expect("Logging to initialize");
-    rocket(options::Opt::from_args()).launch();
+    let opts = options::Opt::from_args();
+    server::new(move || create_app(opts.clone()))
+        .bind("127.0.0.1:8088")
+        .unwrap()
+        .run();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rocket::local::Client;
-    use rocket::http::{ContentType, Status};
+    use actix_web::test::TestServer;
+    use actix_web::HttpMessage;
+    use http::header;
+    use std::str;
 
     #[test]
     fn fill_datapoints_empty() {
@@ -280,12 +281,15 @@ mod tests {
             ip: "Some ip".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let mut response = client.get("/").dispatch();
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::GET, "/").finish().unwrap();
+        let response = srv.execute(request.send()).unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::Plain));
-        assert_eq!(response.body_string(), Some("Hello, world!".into()));
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "text/plain");
+
+        let bytes = srv.execute(response.body()).unwrap();
+        assert_eq!(str::from_utf8(&bytes).unwrap(), "Hello world!");
     }
 
     #[test]
@@ -295,18 +299,20 @@ mod tests {
             ip: "Some ip".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let mut response = client
-            .post("/search")
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::POST, "/search")
+            .header(header::CONTENT_TYPE, "application/json")
             .body(r#"{"target":"something"}"#)
-            .header(ContentType::JSON)
-            .dispatch();
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "application/json");
+
+        let bytes = srv.execute(response.body()).unwrap();
         assert_eq!(
-            response.body_string(),
-            Some(r#"["blog_hits","sites","outbound_data"]"#.into())
+            str::from_utf8(&bytes).unwrap(),
+            r#"["blog_hits","sites","outbound_data"]"#
         );
     }
 
@@ -317,9 +323,9 @@ mod tests {
             ip: "127.0.0.2".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client
-            .post("/query")
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::POST, "/query")
+            .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
 {
@@ -346,11 +352,11 @@ mod tests {
 }
 "#,
             )
-            .header(ContentType::JSON)
-            .dispatch();
+            .unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "application/json");
     }
 
     #[test]
@@ -360,9 +366,9 @@ mod tests {
             ip: "127.0.0.2".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client
-            .post("/query")
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::POST, "/query")
+            .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
 {
@@ -389,11 +395,11 @@ mod tests {
 }
 "#,
             )
-            .header(ContentType::JSON)
-            .dispatch();
+            .unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "application/json");
     }
 
     // Should not fail when the interval is less than a second
@@ -404,9 +410,9 @@ mod tests {
             ip: "127.0.0.2".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client
-            .post("/query")
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::POST, "/query")
+            .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
 {
@@ -433,11 +439,11 @@ mod tests {
 }
 "#,
             )
-            .header(ContentType::JSON)
-            .dispatch();
+            .unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "application/json");
     }
 
     #[test]
@@ -447,9 +453,9 @@ mod tests {
             ip: "127.0.0.2".to_string(),
         };
 
-        let client = Client::new(rocket(opt)).expect("valid rocket instance");
-        let response = client
-            .post("/query")
+        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let request = srv.client(http::Method::POST, "/query")
+            .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
 {
@@ -476,10 +482,10 @@ mod tests {
 }
 "#,
             )
-            .header(ContentType::JSON)
-            .dispatch();
+            .unwrap();
 
-        assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.content_type(), Some(ContentType::JSON));
+        let response = srv.execute(request.send()).unwrap();
+        assert!(response.status().is_success());
+        assert_eq!(response.content_type(), "application/json");
     }
 }

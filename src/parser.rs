@@ -3,8 +3,10 @@ use chrono::prelude::*;
 
 #[derive(Fail, Debug, PartialEq, Clone)]
 pub enum ParseError {
-    #[fail(display = "Text did not match regex `{}`", _0)] NoMatch(String),
-    #[fail(display = "Text could not be parsed into date `{}`", _0)] InvalidDate(String),
+    #[fail(display = "Text did not match regex `{}`", _0)]
+    NoMatch(String),
+    #[fail(display = "Text could not be parsed into date `{}`", _0)]
+    InvalidDate(String),
 }
 
 use models::*;

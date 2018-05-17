@@ -11,18 +11,22 @@ pub struct Range {
 pub struct Target {
     pub target: String,
 
-    #[serde(rename = "refId")] pub ref_id: String,
+    #[serde(rename = "refId")]
+    pub ref_id: String,
 
-    #[serde(rename = "type")] pub _type: String,
+    #[serde(rename = "type")]
+    pub _type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Query {
     pub range: Range,
 
-    #[serde(rename = "intervalMs")] pub interval_ms: i64,
+    #[serde(rename = "intervalMs")]
+    pub interval_ms: i64,
 
-    #[serde(rename = "maxDataPoints")] pub max_data_points: i64,
+    #[serde(rename = "maxDataPoints")]
+    pub max_data_points: i64,
     pub targets: Vec<Target>,
 }
 
@@ -43,14 +47,16 @@ pub struct Series {
 pub struct Column {
     pub text: String,
 
-    #[serde(rename = "type")] pub _type: String,
+    #[serde(rename = "type")]
+    pub _type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Table {
     pub columns: Vec<Column>,
 
-    #[serde(rename = "type")] pub _type: String,
+    #[serde(rename = "type")]
+    pub _type: String,
     pub rows: Vec<Vec<serde_json::Value>>,
 }
 

@@ -17,7 +17,6 @@ pub struct Log {
     pub host: String,
 }
 
-
 #[derive(Debug, Insertable, PartialEq)]
 #[table_name = "logs"]
 pub struct NewLog<'a> {

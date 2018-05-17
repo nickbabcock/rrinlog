@@ -7,21 +7,28 @@ use uom::si::time::second;
 
 #[derive(PartialEq, Debug, QueryableByName)]
 pub struct BlogPost {
-    #[sql_type = "Text"] pub referer: String,
-    #[sql_type = "Integer"] pub views: i32,
+    #[sql_type = "Text"]
+    pub referer: String,
+    #[sql_type = "Integer"]
+    pub views: i32,
 }
 
 #[derive(PartialEq, Debug, QueryableByName)]
 pub struct Sites {
-    #[sql_type = "BigInt"] pub ep: i64,
-    #[sql_type = "Text"] pub host: String,
-    #[sql_type = "Integer"] pub views: i32,
+    #[sql_type = "BigInt"]
+    pub ep: i64,
+    #[sql_type = "Text"]
+    pub host: String,
+    #[sql_type = "Integer"]
+    pub views: i32,
 }
 
 #[derive(PartialEq, Debug, QueryableByName)]
 pub struct OutboundData {
-    #[sql_type = "BigInt"] pub ep: i64,
-    #[sql_type = "Integer"] pub views: i32,
+    #[sql_type = "BigInt"]
+    pub ep: i64,
+    #[sql_type = "Integer"]
+    pub views: i32,
     #[sql_type = "BigInt"]
     #[column_name = "data"]
     pub bytes: i64,

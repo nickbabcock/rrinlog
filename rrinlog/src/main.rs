@@ -141,7 +141,6 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
     );
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate assert_cli;

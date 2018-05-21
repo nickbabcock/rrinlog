@@ -7,7 +7,7 @@ rrinlog is my attempt at [Replacing Elasticsearch with Rust and SQLite](https://
 This project contains two binaries:
 
 - `rrinlog` is for consuming nginx acces logs and storing them in a SQLite database. This binary may be built on Rust stable.
-- `rrinlog-server` exposes this SQLite database according to Grafana's [JSON API datasource](https://github.com/grafana/simple-json-datasource). This binary requires Rust nightly.
+- `rrinlog-server` exposes this SQLite database according to Grafana's [JSON API datasource](https://github.com/grafana/simple-json-datasource). This binary requires Rust nightly. Current Rust web framework is actix web, but there is a [Rocket branch](https://github.com/nickbabcock/rrinlog/tree/rocket) as well
 
 This project currently isn't meant at replacing Elasticsearch for the general populous for the following reasons:
 

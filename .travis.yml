@@ -3,6 +3,11 @@ rust:
   - stable
   - beta
   - nightly
+
+matrix:
+  allow_failures:
+   - rust: nightly
+
 script:
   - cargo install diesel_cli --no-default-features --features sqlite
   - DATABASE_URL=logs.db diesel migration run

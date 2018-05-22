@@ -4,8 +4,6 @@ extern crate chrono;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
-extern crate diesel_infer_schema;
-#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate lazy_static;

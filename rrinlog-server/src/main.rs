@@ -128,7 +128,7 @@ fn get_sites(
 fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u64; 2]> {
     let start = Time::new::<second>(range.from.timestamp());
     let end = Time::new::<second>(range.to.timestamp());
-    let elements: i64 = i64::from((end - start) / interval);
+    let elements: i64 = i64::from((end - start) / interval) + 1;
 
     let mut data: Vec<u64> = vec![0; elements as usize];
     let time: Vec<u64> = (0..elements)
@@ -251,12 +251,12 @@ mod tests {
     fn fill_datapoints_empty() {
         let rng = Range {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
-            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 21),
         };
         let actual = fill_datapoints(&rng, Time::new::<second>(30), &Vec::new());
 
-        // In an hour there are 120 - 30 second intervals in an hour
-        assert_eq!(actual.len(), 120);
+        // In an hour there are 121 - 30 second intervals in an hour
+        assert_eq!(actual.len(), 121);
 
         // Ensure that the gap is interval is upheld
         assert_eq!(actual[1][1] - actual[0][1], 30 * 1000);
@@ -269,7 +269,7 @@ mod tests {
     fn fill_datapoints_one_filled() {
         let rng = Range {
             from: Utc.ymd(2014, 7, 8).and_hms(9, 10, 11),
-            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 11),
+            to: Utc.ymd(2014, 7, 8).and_hms(10, 10, 21),
         };
 
         let fill_time = (Utc.ymd(2014, 7, 8).and_hms(9, 11, 11).timestamp() as u64) * 1000;
@@ -277,8 +277,8 @@ mod tests {
 
         let actual = fill_datapoints(&rng, Time::new::<second>(30), &vec![elem]);
 
-        // In an hour there are 120 - 30 second intervals in an hour
-        assert_eq!(actual.len(), 120);
+        // In an hour there are 121 - 30 second intervals in an hour
+        assert_eq!(actual.len(), 121);
 
         // Ensure that the gap is interval is upheld
         assert_eq!(actual[2][1] - actual[1][1], 30 * 1000);

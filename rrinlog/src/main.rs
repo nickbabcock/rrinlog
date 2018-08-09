@@ -48,7 +48,8 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
 }
 
 fn persist_logs(threshold: usize, db: &str) {
-    let conn = SqliteConnection::establish(db).expect(&format!("Error connecting to {}", db));
+    let conn = SqliteConnection::establish(db)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", db));
 
     // To avoid allocating a string for each line read from stdin and to buffer data so that we
     // batch insert into the db, we keep around the same `n` strings for the whole duration of the

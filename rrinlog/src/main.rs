@@ -67,9 +67,7 @@ fn persist_logs(threshold: usize, db: &str) {
             buf_ind = 0;
 
             // Remove the parsed lines, but keep the allocated space for them
-            for s in &mut buffer {
-                s.clear();
-            }
+            buffer.iter_mut().for_each(String::clear);
         }
     }
 

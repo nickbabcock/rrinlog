@@ -126,17 +126,20 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T], ips: &Has
         .filter(|x| x.remote_addr.map(|s| !ips.contains(s)).unwrap_or(true))
         .collect();
 
-    // Now that we have all the successfully parsed logs, insert them into the db
-    let db_res = diesel::insert_into(logs::table)
-        .values(&lines)
-        .execute(conn);
+    // Now that we have all the successfully parsed logs, insert them into the db. If no lines need
+    // to be inserted, skip needlessly locking the db
+    if !lines.empty() {
+        let db_res = diesel::insert_into(logs::table)
+            .values(&lines)
+            .execute(conn);
 
-    // If inserting into the db fails, log the error, but still discard the messages, so we
-    // remain light on memory usage. Never panic as we're supposed to be a long lived
-    // application
-    if let Err(ref e) = db_res {
-        error!("Insertion error: {}", e);
-        return;
+        // If inserting into the db fails, log the error, but still discard the messages, so we
+        // remain light on memory usage. Never panic as we're supposed to be a long lived
+        // application
+        if let Err(ref e) = db_res {
+            error!("Insertion error: {}", e);
+            return;
+        }
     }
 
     let end = Utc::now();

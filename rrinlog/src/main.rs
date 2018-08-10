@@ -84,7 +84,7 @@ fn dry_run() {
     let mut line = String::new();
     let mut locked_stdin = stdin.lock();
     while locked_stdin.read_line(&mut line).unwrap_or(0) > 0 {
-        match parser::parse_nginx_line(line.as_str()) {
+        match parser::parse_nginx_line(line.trim()) {
             // Both Ok and Err branches halt writing if the line can't be ouput.
             // For instance, this occurs when rrinlog output is piped to head
             Ok(log) => if writeln!(&mut handle, "line: {}", log).is_err() {
@@ -109,7 +109,8 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
 
     let lines: Vec<NewLog> = buffer
         .iter()
-        .map(|line| parser::parse_nginx_line(line.as_ref()))
+        .map(|line| line.as_ref().trim())
+        .map(|line| parser::parse_nginx_line(line))
         .inspect(|line| {
             // If we can't parse a line, yeah that sucks but it's bound to happen so discard
             // the line after it's logged for the attentive sysadmin

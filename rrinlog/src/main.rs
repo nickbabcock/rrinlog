@@ -11,6 +11,7 @@ extern crate rrinlog_core;
 extern crate structopt;
 
 use std::io;
+use std::collections::HashSet;
 use std::io::prelude::*;
 use diesel::prelude::*;
 use structopt::StructOpt;
@@ -25,10 +26,11 @@ fn main() {
     init_logging().expect("Logging to initialize");
 
     let opt = options::Opt::from_args();
+    let ips: HashSet<String> = opt.filter_ips.into_iter().collect();
     if opt.dry_run {
         dry_run();
     } else {
-        persist_logs(opt.buffer, &opt.db);
+        persist_logs(opt.buffer, &opt.db, &ips);
     }
 }
 
@@ -47,7 +49,7 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
         .init()
 }
 
-fn persist_logs(threshold: usize, db: &str) {
+fn persist_logs(threshold: usize, db: &str, ips: &HashSet<String>) {
     let conn = SqliteConnection::establish(db)
         .unwrap_or_else(|_| panic!("Error connecting to {}", db));
 
@@ -63,7 +65,7 @@ fn persist_logs(threshold: usize, db: &str) {
     while locked_stdin.read_line(&mut buffer[buf_ind]).unwrap_or(0) > 0 {
         buf_ind += 1;
         if buf_ind >= threshold {
-            insert_buffer(&conn, &buffer);
+            insert_buffer(&conn, &buffer, ips);
             buf_ind = 0;
 
             // Remove the parsed lines, but keep the allocated space for them
@@ -101,7 +103,7 @@ fn dry_run() {
 
 /// If SQLite transaction successfully acquired, `insert_buffer` will drain the provided buffer of
 /// log lines even if the line can't be parsed or inserted.
-fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
+fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T], ips: &HashSet<String>) {
     use rrinlog_core::schema::logs;
 
     let start = Utc::now();
@@ -119,6 +121,9 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T]) {
             }
         })
         .filter_map(Result::ok)
+
+        // Filter out black listed ips
+        .filter(|x| x.remote_addr.map(|s| !ips.contains(s)).unwrap_or(true))
         .collect();
 
     // Now that we have all the successfully parsed logs, insert them into the db

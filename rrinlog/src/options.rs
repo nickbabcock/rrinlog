@@ -5,8 +5,12 @@ pub struct Opt {
                 help = "Print the parsed logs to stdout instead of persisting to the db")]
     pub dry_run: bool,
 
+    #[structopt(long = "filter-ip",
+                help = "Do not store given ip address in the db")]
+    pub filter_ips: Vec<String>,
+
     #[structopt(short = "b", long = "buffer",
-                help = "Number of log lines to buffer before inserting into db",
+                help = "number of log lines to buffer before inserting into db",
                 default_value = "10")]
     pub buffer: usize,
 

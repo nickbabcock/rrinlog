@@ -128,7 +128,7 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T], ips: &Has
 
     // Now that we have all the successfully parsed logs, insert them into the db. If no lines need
     // to be inserted, skip needlessly locking the db
-    if !lines.empty() {
+    if !lines.is_empty() {
         let db_res = diesel::insert_into(logs::table)
             .values(&lines)
             .execute(conn);

@@ -18,6 +18,6 @@ version = "1"
 path = ".."
 
 [dev-dependencies]
-assert_cli = "0.5.4"
+assert_cli = "0.6"
 environment = "0.1.1"
 tempdir = "0.3.5"

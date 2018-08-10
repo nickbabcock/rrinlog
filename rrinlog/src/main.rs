@@ -173,7 +173,7 @@ mod tests {
             r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
         assert_cli::Assert::main_binary()
             .with_args(&["--dry-run"])
-            .stdin(&format!("{}\n{}", fail_line, success_line))
+            .stdin(format!("{}\n{}", fail_line, success_line))
             .succeeds()
             .stdout()
             .contains("line: ")
@@ -198,15 +198,22 @@ mod tests {
         let fail_line = "Cats are alright";
         let success_line =
             r#"127.0.0.1 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
+        let skip_line =
+            r#"127.0.0.2 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
         assert_cli::Assert::main_binary()
             .with_env(environment::Environment::inherit().insert("RUST_LOG", "INFO"))
-            .with_args(&["--buffer", "1", "--db", tmp])
-            .stdin(&format!("{}\n{}", fail_line, success_line))
+            .with_args(&["--buffer", "1", "--filter-ip", "127.0.0.2", "--filter-ip", "127.0.0.3", "--db", tmp])
+            .stdin(format!("{}\n{}\n{}", fail_line, success_line, skip_line))
             .succeeds()
-            .stdout()
-            .contains("Parsing and inserting 0 out of 1")
-            .stdout()
-            .contains("Parsing and inserting 1 out of 1")
+            .stdout().satisfies(|out| out.lines().count() == 4, "4 lines")
+            .stdout().contains("Text did not match regex `Cats are alright`")
+            .stdout().satisfies(|out| {
+                let lines: Vec<&str> = out.lines().skip(1).collect();
+                lines.len() == 3 &&
+                lines[0].contains("inserting 0 out of 1 records") &&
+                lines[1].contains("inserting 1 out of 1 records") &&
+                lines[2].contains("inserting 0 out of 1 records")
+            }, "correct lines")
             .unwrap();
     }
 }

@@ -71,7 +71,10 @@ fn persist_logs(threshold: usize, db: &str) {
         }
     }
 
-    insert_buffer(&conn, &buffer)
+    // Flush anything else that exists in the buffer
+    if buf_ind > 0 {
+        insert_buffer(&conn, &buffer[..buf_ind], ips)
+    }
 }
 
 fn dry_run() {

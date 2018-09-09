@@ -6,3 +6,6 @@ Type=simple
 WorkingDirectory=/tank/containers/rrinlog
 ExecStart=/bin/bash -c '/usr/bin/tail -n 0 -F /var/log/nginx/access.log | RUST_LOG=info ./rrinlog --filter-ip 127.0.0.1'
 StandardOutput=journal+console
+
+[Install]
+WantedBy=default.target

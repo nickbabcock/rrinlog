@@ -1,5 +1,9 @@
 [Unit]
 Description=Provides Grafana JSON API to nginx access logs stored in a sqlite database
+Wants=network-online.target
+# Wants=sys-devices-virtual-net-docker0.device docker.target
+After=network.target network-online.target
+# After=sys-devices-virtual-net-docker0.device docker.target
 
 [Service]
 Type=simple
@@ -7,3 +11,6 @@ WorkingDirectory=/tank/containers/rrinlog
 ExecStart=/tank/containers/rrinlog/rrinlog-server --ip <enter ip>
 StandardOutput=journal+console
 Environment="RUST_LOG=info"
+
+[Install]
+WantedBy=default.target

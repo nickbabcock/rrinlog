@@ -71,11 +71,11 @@ GROUP BY epoch / ?,
 "#;
 
     sql_query(qs)
-        .bind::<Integer, _>(interval.get(second) as i32)
-        .bind::<Integer, _>(interval.get(second) as i32)
+        .bind::<Integer, _>(interval.get::<second>() as i32)
+        .bind::<Integer, _>(interval.get::<second>() as i32)
         .bind::<BigInt, _>(range.from.timestamp())
         .bind::<BigInt, _>(range.to.timestamp())
-        .bind::<Integer, _>(interval.get(second) as i32)
+        .bind::<Integer, _>(interval.get::<second>() as i32)
         .load(conn)
 }
 
@@ -97,9 +97,9 @@ WHERE  epoch >= ?
 GROUP BY epoch / ({})
 ORDER BY ep
 "#,
-        interval.get(second),
-        interval.get(second),
-        interval.get(second)
+        interval.get::<second>(),
+        interval.get::<second>(),
+        interval.get::<second>()
     );
 
     sql_query(qs)

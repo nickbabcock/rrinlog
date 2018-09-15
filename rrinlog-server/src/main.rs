@@ -132,7 +132,7 @@ fn fill_datapoints(range: &Range, interval: Time, points: &[[u64; 2]]) -> Vec<[u
 
     let mut data: Vec<u64> = vec![0; elements as usize];
     let time: Vec<u64> = (0..elements)
-        .map(|i| (i * interval.get(millisecond) + start.get(millisecond)) as u64)
+        .map(|i| (i * interval.get::<millisecond>() + start.get::<millisecond>()) as u64)
         .collect();
 
     for point in points {

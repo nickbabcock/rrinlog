@@ -16,7 +16,7 @@ use std::io::prelude::*;
 use diesel::prelude::*;
 use structopt::StructOpt;
 use chrono::prelude::*;
-use env_logger::{LogBuilder, LogTarget};
+use env_logger::{Builder, Target};
 use rrinlog_core::parser;
 use rrinlog_core::models::NewLog;
 
@@ -35,18 +35,17 @@ fn main() {
 }
 
 fn init_logging() -> Result<(), log::SetLoggerError> {
-    LogBuilder::new()
-        .format(|record| {
-            format!(
+    Builder::from_default_env()
+        .format(|buf, record| {
+            writeln!(buf,
                 "{} [{}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
                 record.args()
             )
         })
-        .parse(&std::env::var("RUST_LOG").unwrap_or_default())
-        .target(LogTarget::Stdout)
-        .init()
+        .target(Target::Stdout)
+        .try_init()
 }
 
 fn persist_logs(threshold: usize, db: &str, ips: &HashSet<String>) {

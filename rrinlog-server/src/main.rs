@@ -24,7 +24,7 @@ mod dao;
 mod errors;
 
 use structopt::StructOpt;
-use env_logger::{LogBuilder, LogTarget};
+use env_logger::{Builder, Target};
 use diesel::prelude::*;
 use chrono::prelude::*;
 use api::*;
@@ -35,6 +35,7 @@ use uom::si::i64::*;
 use uom::si::time::{millisecond, second};
 use actix_web::{http, server, App, HttpRequest, Json, State};
 use actix_web::middleware::Logger;
+use std::io::Write;
 
 #[derive(Debug, Clone)]
 struct RinState {
@@ -201,18 +202,17 @@ fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
 }
 
 fn init_logging() -> Result<(), log::SetLoggerError> {
-    LogBuilder::new()
-        .format(|record| {
-            format!(
+    Builder::from_default_env()
+        .format(|buf, record| {
+            writeln!(buf,
                 "{} [{}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
                 record.args()
             )
         })
-        .parse(&std::env::var("RUST_LOG").unwrap_or_default())
-        .target(LogTarget::Stdout)
-        .init()
+        .target(Target::Stdout)
+        .try_init()
 }
 
 fn create_app(opts: RinState) -> App<RinState> {

@@ -7,7 +7,7 @@ version = "0.1.0"
 chrono = "0.4.0"
 env_logger = "0.4.3"
 failure = "0.1.1"
-log = "0.3.8"
+log = "0.4.5"
 structopt = "0.2"
 
 [dependencies.diesel]

@@ -33,7 +33,7 @@ use itertools::Itertools;
 use failure::Error;
 use uom::si::i64::*;
 use uom::si::time::{millisecond, second};
-use actix_web::{http, server, App, HttpRequest, Json, State};
+use actix_web::{http, server, App, HttpRequest, Json, State, Responder};
 use actix_web::middleware::Logger;
 use std::io::Write;
 
@@ -43,7 +43,7 @@ struct RinState {
     pub ip: String,
 }
 
-fn index(_req: HttpRequest<RinState>) -> &'static str {
+fn index(_req: &HttpRequest<RinState>) -> impl Responder {
     "Hello world!"
 }
 

@@ -13,10 +13,6 @@ lazy_static = "1"
 features = ["sqlite"]
 version = "1"
 
-[dependencies.diesel_infer_schema]
-features = ["sqlite"]
-version = "1"
-
 [dependencies.libsqlite3-sys]
 features = ["bundled"]
 version = "0.9.1"

@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "0.7.12"
+version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "actix 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1138,7 +1138,7 @@ name = "rrinlog-server"
 version = "0.1.0"
 dependencies = [
  "actix 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "actix-web 0.7.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "actix-web 0.7.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 1.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1917,7 +1917,7 @@ dependencies = [
 [metadata]
 "checksum actix 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)" = "710e449bb7720ad245a7101f3698ebc743588e0f4ba2b07fe9d74323e348b835"
 "checksum actix-net 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6681a31050ab951f09050f08c5ddb4189659b8bca93b629b26547208861d1401"
-"checksum actix-web 0.7.12 (registry+https://github.com/rust-lang/crates.io-index)" = "9f471c0941f1130c1c69370e379e375bfc875cecc3d2dc28baa9ab5c297c8a18"
+"checksum actix-web 0.7.13 (registry+https://github.com/rust-lang/crates.io-index)" = "726a60109dce69d2fb86ef24b4f97135cb2e9ae63b5bbc61bb5987989303a734"
 "checksum actix_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5b9d1525ef45e5e021f0b93dace157dcab5d792acb4cc78f3213787d65e2bb92"
 "checksum aho-corasick 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)" = "68f56c7353e5a9547cbd76ed90f7bb5ffc3ba09d4ea9bd1d8c06c8b1142eeb5a"
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"

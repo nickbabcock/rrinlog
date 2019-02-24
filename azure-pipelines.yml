@@ -66,8 +66,10 @@ jobs:
       matrix:
         musl:
           target: 'x86_64-unknown-linux-musl'
-        freebsd:
-          target: 'x86_64-unknown-freebsd'
+        gnu:
+          target: 'x86_64-unknown-linux-gnu'
+        mac:
+          target: 'x86_64-apple-darwin'
     steps:
       - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
@@ -82,5 +84,5 @@ jobs:
           cargo install --path .
           rm -rf "$D"
         displayName: Install cross
-      - script: cross build --all --target $TARGET
+      - script: cross build --release --all --target $TARGET
         displayName: Build

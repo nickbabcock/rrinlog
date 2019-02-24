@@ -4,8 +4,21 @@ jobs:
       vmImage: 'ubuntu-16.04'
     container: 'rust:latest'
     steps:
-      - script: 'rustup component add clippy && cargo clippy --all'
+      - script: |
+            rustup component add clippy
+            cargo clippy --all
         displayName: Clippy
+
+  - job: 'Rustfmt'
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container: 'rust:latest'
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    steps:
+      - script: |
+            rustup component add rustfmt
+            cargo fmt --all -- --check
+        displayName: Rustfmt
 
   - job: 'Test'
     strategy:
@@ -25,10 +38,8 @@ jobs:
         linux-nightly:
           imageName: 'ubuntu-16.04'
           rustup_toolchain: nightly
-
     pool:
       vmImage: $(imageName)
-
     steps:
       - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $RUSTUP_TOOLCHAIN

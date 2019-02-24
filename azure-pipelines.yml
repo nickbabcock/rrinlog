@@ -7,7 +7,7 @@ jobs:
       - script: cargo clippy --all
         displayName: Clippy
     
-  - job: 'Build and Test'
+  - job: 'Test'
     strategy:
       matrix:
         windows-stable:

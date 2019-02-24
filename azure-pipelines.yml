@@ -66,9 +66,8 @@ jobs:
       matrix:
         musl:
           target: 'x86_64-unknown-linux-musl'
-        aarch64:
+        freebsd:
           target: 'x86_64-unknown-freebsd'
-          disableTest: '1'
     steps:
       - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
@@ -78,6 +77,3 @@ jobs:
         displayName: Install cross
       - script: cross build --all --target $TARGET
         displayName: Build
-      - script: cross test --target $TARGET --all
-        condition: ne(variables['disableTest'], '1')
-        displayName: Test

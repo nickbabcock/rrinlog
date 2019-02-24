@@ -60,16 +60,19 @@ jobs:
         displayName: Cargo test
 
   - job: 'Cross'
-    pool:
-      vmImage: 'ubuntu-16.04'
     strategy:
       matrix:
         musl:
           target: 'x86_64-unknown-linux-musl'
+          imageName: 'ubuntu-16.04'
         gnu:
           target: 'x86_64-unknown-linux-gnu'
+          imageName: 'ubuntu-16.04'
         mac:
           target: 'x86_64-apple-darwin'
+          imageName: 'macos-10.13'
+    pool:
+      vmImage: $(imageName)
     steps:
       - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y

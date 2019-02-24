@@ -58,3 +58,23 @@ jobs:
         displayName: Cargo build
       - script: cargo test --all
         displayName: Cargo test
+
+  - job: 'Cross'
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container: 'rust:latest'
+    strategy:
+      matrix:
+        musl:
+          target: 'x86_64-unknown-linux-musl'
+        aarch64:
+          target: 'x86_64-unknown-freebsd'
+          disableTest: '1'
+    steps:
+      - script: cargo install cross
+        displayName: Install cross
+      - script: cross build --all --target $TARGET
+        displayName: Build
+      - script: cross test --target $TARGET --all
+        condition: ne(variables['disableTest'], '1')
+        displayName: Test

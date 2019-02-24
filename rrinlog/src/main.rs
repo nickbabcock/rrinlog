@@ -112,6 +112,7 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T], ips: &Has
 
     let start = Utc::now();
     let init_len = buffer.len();
+    let a = 100 > std::i32::MAX;
 
     let lines: Vec<NewLog> = buffer
         .iter()

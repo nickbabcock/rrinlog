@@ -62,7 +62,6 @@ jobs:
   - job: 'Cross'
     pool:
       vmImage: 'ubuntu-16.04'
-    container: 'rust:latest'
     strategy:
       matrix:
         musl:
@@ -71,6 +70,10 @@ jobs:
           target: 'x86_64-unknown-freebsd'
           disableTest: '1'
     steps:
+      - script: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $RUSTUP_TOOLCHAIN
+          echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
+        displayName: Install rust
       - script: cargo install cross
         displayName: Install cross
       - script: cross build --all --target $TARGET

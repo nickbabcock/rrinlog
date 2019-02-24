@@ -10,15 +10,15 @@ extern crate rrinlog_core;
 #[macro_use]
 extern crate structopt;
 
-use std::io;
-use std::collections::HashSet;
-use std::io::prelude::*;
-use diesel::prelude::*;
-use structopt::StructOpt;
 use chrono::prelude::*;
+use diesel::prelude::*;
 use env_logger::{Builder, Target};
-use rrinlog_core::parser;
 use rrinlog_core::models::NewLog;
+use rrinlog_core::parser;
+use std::collections::HashSet;
+use std::io;
+use std::io::prelude::*;
+use structopt::StructOpt;
 
 mod options;
 
@@ -37,7 +37,8 @@ fn main() {
 fn init_logging() -> Result<(), log::SetLoggerError> {
     Builder::from_default_env()
         .format(|buf, record| {
-            writeln!(buf,
+            writeln!(
+                buf,
                 "{} [{}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
@@ -49,8 +50,8 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
 }
 
 fn persist_logs(threshold: usize, db: &str, ips: &HashSet<String>) {
-    let conn = SqliteConnection::establish(db)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", db));
+    let conn =
+        SqliteConnection::establish(db).unwrap_or_else(|_| panic!("Error connecting to {}", db));
 
     // To avoid allocating a string for each line read from stdin and to buffer data so that we
     // batch insert into the db, we keep around the same `n` strings for the whole duration of the
@@ -88,12 +89,16 @@ fn dry_run() {
         match parser::parse_nginx_line(line.trim()) {
             // Both Ok and Err branches halt writing if the line can't be ouput.
             // For instance, this occurs when rrinlog output is piped to head
-            Ok(log) => if writeln!(&mut handle, "line: {}", log).is_err() {
-                break;
-            },
-            Err(ref e) => if writeln!(&mut handle, "error: {}", e).is_err() {
-                break;
-            },
+            Ok(log) => {
+                if writeln!(&mut handle, "line: {}", log).is_err() {
+                    break;
+                }
+            }
+            Err(ref e) => {
+                if writeln!(&mut handle, "error: {}", e).is_err() {
+                    break;
+                }
+            }
         }
 
         line.clear();
@@ -120,7 +125,6 @@ fn insert_buffer<T: AsRef<str>>(conn: &SqliteConnection, buffer: &[T], ips: &Has
             }
         })
         .filter_map(Result::ok)
-
         // Filter out black listed ips
         .filter(|x| x.remote_addr.map(|s| !ips.contains(s)).unwrap_or(true))
         .collect();
@@ -157,8 +161,8 @@ mod tests {
     extern crate environment;
     extern crate tempdir;
 
-    use std::path::PathBuf;
     use std::env;
+    use std::path::PathBuf;
 
     #[test]
     fn test_dry_run_empty_input() {
@@ -204,18 +208,33 @@ mod tests {
             r#"127.0.0.2 - - [04/Nov/2017:13:05:35 -0500] "GET /js/embed.min.js HTTP/2.0" 200 20480 "https://nbsoftsolutions.com/blog/monitoring-windows-system-metrics-with-grafana" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36" "comments.nbsoftsolutions.com""#;
         assert_cli::Assert::main_binary()
             .with_env(environment::Environment::inherit().insert("RUST_LOG", "INFO"))
-            .with_args(&["--buffer", "1", "--filter-ip", "127.0.0.2", "--filter-ip", "127.0.0.3", "--db", tmp])
+            .with_args(&[
+                "--buffer",
+                "1",
+                "--filter-ip",
+                "127.0.0.2",
+                "--filter-ip",
+                "127.0.0.3",
+                "--db",
+                tmp,
+            ])
             .stdin(format!("{}\n{}\n{}", fail_line, success_line, skip_line))
             .succeeds()
-            .stdout().satisfies(|out| out.lines().count() == 4, "4 lines")
-            .stdout().contains("Text did not match regex `Cats are alright`")
-            .stdout().satisfies(|out| {
-                let lines: Vec<&str> = out.lines().skip(1).collect();
-                lines.len() == 3 &&
-                lines[0].contains("inserting 0 out of 1 records") &&
-                lines[1].contains("inserting 1 out of 1 records") &&
-                lines[2].contains("inserting 0 out of 1 records")
-            }, "correct lines")
+            .stdout()
+            .satisfies(|out| out.lines().count() == 4, "4 lines")
+            .stdout()
+            .contains("Text did not match regex `Cats are alright`")
+            .stdout()
+            .satisfies(
+                |out| {
+                    let lines: Vec<&str> = out.lines().skip(1).collect();
+                    lines.len() == 3
+                        && lines[0].contains("inserting 0 out of 1 records")
+                        && lines[1].contains("inserting 1 out of 1 records")
+                        && lines[2].contains("inserting 0 out of 1 records")
+                },
+                "correct lines",
+            )
             .unwrap();
     }
 }

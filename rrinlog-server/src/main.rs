@@ -18,24 +18,24 @@ extern crate serde_json;
 extern crate structopt;
 extern crate uom;
 
-mod options;
 mod api;
 mod dao;
 mod errors;
+mod options;
 
-use structopt::StructOpt;
-use env_logger::{Builder, Target};
-use diesel::prelude::*;
-use chrono::prelude::*;
+use actix_web::middleware::Logger;
+use actix_web::{http, server, App, HttpRequest, Json, Responder, State};
 use api::*;
+use chrono::prelude::*;
+use diesel::prelude::*;
+use env_logger::{Builder, Target};
 use errors::DataError;
-use itertools::Itertools;
 use failure::Error;
+use itertools::Itertools;
+use std::io::Write;
+use structopt::StructOpt;
 use uom::si::i64::*;
 use uom::si::time::{millisecond, second};
-use actix_web::{http, server, App, HttpRequest, Json, State, Responder};
-use actix_web::middleware::Logger;
-use std::io::Write;
 
 #[derive(Debug, Clone)]
 struct RinState {
@@ -63,8 +63,8 @@ fn query(data: (Json<Query>, State<RinState>)) -> Result<Json<QueryResponse>, Er
     // Acquire SQLite connection on each request. This can be considered inefficient, but since
     // there isn't a roundtrip connection cost the benefit to debugging of never having a stale
     // connection is well worth it.
-    let conn =
-        SqliteConnection::establish(&opt.db).map_err(|e| DataError::DbConn(opt.db.to_owned(), e))?;
+    let conn = SqliteConnection::establish(&opt.db)
+        .map_err(|e| DataError::DbConn(opt.db.to_owned(), e))?;
 
     // Grafana can technically ask for more than one target at once. It can ask for "blog_hits" and
     // "sites" in one request, but we're going to keep it simply and work with only with requests
@@ -177,7 +177,8 @@ fn get_blog_posts(
         .map_err(|e| DataError::DbQuery("blog posts".to_string(), e))?;
 
     // Grafana expects rows to contain heterogeneous values in the same order as the table columns.
-    let r: Vec<_> = rows.into_iter()
+    let r: Vec<_> = rows
+        .into_iter()
         .map(|x| vec![json!(x.referer), json!(x.views)])
         .collect();
 
@@ -204,7 +205,8 @@ fn create_blog_table(rows: Vec<Vec<serde_json::value::Value>>) -> api::Table {
 fn init_logging() -> Result<(), log::SetLoggerError> {
     Builder::from_default_env()
         .format(|buf, record| {
-            writeln!(buf,
+            writeln!(
+                buf,
                 "{} [{}] - {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.level(),
@@ -227,10 +229,13 @@ fn main() {
     init_logging().expect("Logging to initialize");
     let opts = options::Opt::from_args();
     let (addr, state) = {
-        (opts.addr, RinState {
-            db: opts.db,
-            ip: opts.ip,
-        })
+        (
+            opts.addr,
+            RinState {
+                db: opts.db,
+                ip: opts.ip,
+            },
+        )
     };
 
     server::new(move || create_app(state.clone()))
@@ -313,7 +318,8 @@ mod tests {
         };
 
         let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::POST, "/search")
+        let request = srv
+            .client(http::Method::POST, "/search")
             .header(header::CONTENT_TYPE, "application/json")
             .body(r#"{"target":"something"}"#)
             .unwrap();
@@ -337,7 +343,8 @@ mod tests {
         };
 
         let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::POST, "/query")
+        let request = srv
+            .client(http::Method::POST, "/query")
             .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
@@ -380,7 +387,8 @@ mod tests {
         };
 
         let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::POST, "/query")
+        let request = srv
+            .client(http::Method::POST, "/query")
             .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
@@ -424,7 +432,8 @@ mod tests {
         };
 
         let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::POST, "/query")
+        let request = srv
+            .client(http::Method::POST, "/query")
             .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"
@@ -467,7 +476,8 @@ mod tests {
         };
 
         let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::POST, "/query")
+        let request = srv
+            .client(http::Method::POST, "/query")
             .header(header::CONTENT_TYPE, "application/json")
             .body(
                 r#"

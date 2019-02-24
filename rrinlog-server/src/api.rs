@@ -73,8 +73,8 @@ pub struct QueryResponse(pub Vec<TargetData>);
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use api::*;
+    use serde_json;
 
     #[test]
     fn test_search_de() {
@@ -96,19 +96,18 @@ mod tests {
     #[test]
     fn test_table_response_ser() {
         let resp = Table {
-            columns: vec![
-                Column {
-                    text: "Name".to_string(),
-                    _type: "Text".to_string(),
-                },
-            ],
+            columns: vec![Column {
+                text: "Name".to_string(),
+                _type: "Text".to_string(),
+            }],
             _type: "table".to_string(),
             rows: vec![vec![json!("nick")]],
         };
         let actual = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             actual,
-            r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#.to_string()
+            r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#
+                .to_string()
         );
     }
 
@@ -169,19 +168,18 @@ mod tests {
     #[test]
     fn test_query_table_response_ser() {
         let resp = Table {
-            columns: vec![
-                Column {
-                    text: "Name".to_string(),
-                    _type: "Text".to_string(),
-                },
-            ],
+            columns: vec![Column {
+                text: "Name".to_string(),
+                _type: "Text".to_string(),
+            }],
             _type: "table".to_string(),
             rows: vec![vec![json!("nick")]],
         };
         let actual = serde_json::to_string(&TargetData::Table(resp)).unwrap();
         assert_eq!(
             actual,
-            r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#.to_string()
+            r#"{"columns":[{"text":"Name","type":"Text"}],"type":"table","rows":[["nick"]]}"#
+                .to_string()
         );
     }
 
@@ -194,7 +192,8 @@ mod tests {
         let actual = serde_json::to_string(&TargetData::Series(resp)).unwrap();
         assert_eq!(
             actual,
-            r#"{"target":"my_target","datapoints":[[861,1450754160000],[767,1450754220000]]}"#.to_string()
+            r#"{"target":"my_target","datapoints":[[861,1450754160000],[767,1450754220000]]}"#
+                .to_string()
         );
     }
 }

@@ -1,7 +1,7 @@
-use diesel::prelude::*;
-use diesel::sql_types::{BigInt, Integer, Text};
-use diesel::sql_query;
 use api::*;
+use diesel::prelude::*;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Integer, Text};
 use uom::si::i64::*;
 use uom::si::time::second;
 

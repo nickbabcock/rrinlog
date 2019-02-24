@@ -1,6 +1,6 @@
+use chrono::prelude::*;
 use diesel::result::ConnectionError;
 use diesel::result::Error as DsError;
-use chrono::prelude::*;
 
 #[derive(Fail, Debug)]
 pub enum DataError {
@@ -16,6 +16,9 @@ pub enum DataError {
     #[fail(display = "Unrecognized target: {}", _0)]
     UnrecognizedTarget(String),
 
-    #[fail(display = "Start and end dates are swapped. Start: {}, end: {}", _0, _1)]
+    #[fail(
+        display = "Start and end dates are swapped. Start: {}, end: {}",
+        _0, _1
+    )]
     DatesSwapped(DateTime<Utc>, DateTime<Utc>),
 }

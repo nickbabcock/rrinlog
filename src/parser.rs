@@ -1,5 +1,5 @@
-use regex::Regex;
 use chrono::prelude::*;
+use regex::Regex;
 
 #[derive(Fail, Debug, PartialEq, Clone)]
 pub enum ParseError {
@@ -13,7 +13,8 @@ use models::*;
 
 pub fn parse_nginx_line(text: &str) -> Result<NewLog, ParseError> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r#"(?x)
+        static ref RE: Regex = Regex::new(
+            r#"(?x)
         (?P<remote_addr>[^\s]+)
         \s-\s
         (?P<remote_user>[^\s]*)
@@ -34,7 +35,9 @@ pub fn parse_nginx_line(text: &str) -> Result<NewLog, ParseError> {
         \s
         "(?P<user_agent>[^"]*)"
         \s
-        "(?P<host>[^"]+)""#).unwrap();
+        "(?P<host>[^"]+)""#
+        )
+        .unwrap();
     }
 
     if let Some(caps) = RE.captures(text) {
@@ -46,7 +49,8 @@ pub fn parse_nginx_line(text: &str) -> Result<NewLog, ParseError> {
             method: Some(caps.name("method").unwrap().as_str()),
             path: Some(caps.name("path").unwrap().as_str()),
             version: Some(caps.name("version").unwrap().as_str()),
-            body_bytes_sent: caps.name("body_bytes_sent")
+            body_bytes_sent: caps
+                .name("body_bytes_sent")
                 .unwrap()
                 .as_str()
                 .parse::<i32>()

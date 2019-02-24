@@ -7,14 +7,6 @@ jobs:
       - script: cargo clippy --all
         displayName: Clippy
 
-  - job: 'Rustfmt'
-    pool:
-      vmImage: 'ubuntu-16.04'
-    container: rust
-    steps:
-      - script: cargo clippy --all
-        displayName: Clippy
-    
   - job: 'Test'
     strategy:
       matrix:

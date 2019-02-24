@@ -13,7 +13,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-16.04'
     container: 'rust:latest'
-    condition: startsWith(variables['Build.SourceBranch'], 'refs/pull/')
+    condition: eq(variables['Build.Reason'], 'PullRequest')
     steps:
       - script: |
             rustup component add rustfmt

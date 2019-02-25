@@ -100,10 +100,11 @@ jobs:
           targetFolder: '$(Build.BinariesDirectory)'
       - task: ArchiveFiles@2
         displayName: Gather assets
-        rootFolderOrFile: '$(Build.BinariesDirectory)'
-        archiveType: 'tar'
-        tarCompression: 'gz'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
+        inputs:
+          rootFolderOrFile: '$(Build.BinariesDirectory)'
+          archiveType: 'tar'
+          tarCompression: 'gz'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
 #      - task: task: GithubRelease@0
 #        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
 #        inputs:

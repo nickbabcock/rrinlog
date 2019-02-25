@@ -79,6 +79,7 @@ jobs:
           echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
         displayName: Install rust
       - script: |
+          set -eou
           D=$(mktemp -d)
           git clone https://github.com/rust-embedded/cross.git "$D"
           cd "$D"
@@ -89,3 +90,11 @@ jobs:
         displayName: Install cross
       - script: cross build --release --all --target $TARGET
         displayName: Build
+      - script: |
+          cd ./target/$TARGET/release
+          tar czf "$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$TARGET.tar.gz" rrinlog rrinlog-server
+        displayName: Create assets
+#      - task: task: GithubRelease@0
+#        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
+#        inputs:
+        

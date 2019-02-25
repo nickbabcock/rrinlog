@@ -105,7 +105,14 @@ jobs:
           archiveType: 'tar'
           tarCompression: 'gz'
           archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
-#      - task: task: GithubRelease@0
-#        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
-#        inputs:
-        
+      - task: task: GithubRelease@0
+        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
+        inputs:
+          gitHubConnection: 'nickbabcock'
+          repositoryName: 'nickbabcock/rrinlog'
+          action: 'edit'
+          target: '$(build.sourceVersion)'
+          tagSource: 'Git tag'
+          tag: '$(Build.SourceBranch)'
+          title: '$(oiio.version)+$(build.date)'
+          assetUploadMode: 'replace'

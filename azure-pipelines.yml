@@ -93,11 +93,17 @@ jobs:
       - task: CopyFiles@2
         displayName: Copy assets
         inputs:
-          sourceFolder: target/$TARGET/release
+          sourceFolder: '$(Build.SourcesDirectory)/target/$(TARGET)/release'
           contents: |
             rrinlog
             rrinlog-server
-          targetFolder: '$(Build.ArtifactStagingDirectory)'
+          targetFolder: '$(Build.BinariesDirectory)'
+      - task: ArchiveFiles@2
+        displayName: Gather assets
+        rootFolderOrFile: '$(Build.BinariesDirectory)'
+        archiveType: 'tar'
+        tarCompression: 'gz'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
 #      - task: task: GithubRelease@0
 #        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
 #        inputs:

@@ -101,16 +101,16 @@ jobs:
           contents: |
             rrinlog
             rrinlog-server
-          targetFolder: '$(Build.BinariesDirectory)'
+          targetFolder: '$(Build.BinariesDirectory)/rrinlog'
       - task: ArchiveFiles@2
         displayName: Gather assets
         inputs:
-          rootFolderOrFile: '$(Build.BinariesDirectory)'
+          rootFolderOrFile: '$(Build.BinariesDirectory)/rrinlog'
           archiveType: 'tar'
           tarCompression: 'gz'
           archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
       - task: GithubRelease@0
-#        condition: and(succeeded(), contains(variables['Build.SourceBranch'], 'refs/tags/'))
+#        condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
         inputs:
           gitHubConnection: 'nickbabcock'
           repositoryName: 'nickbabcock/rrinlog'

@@ -120,9 +120,9 @@ jobs:
         inputs:
           gitHubConnection: 'nickbabcock'
           repositoryName: 'nickbabcock/rrinlog'
-          action: 'edit'
+          action: 'create'
           target: '$(build.sourceVersion)'
-          tagSource: 'Git tag'
+          tagSource: 'auto'
           tag: '$(Build.SourceBranch)'
           assets: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
           title: '$(Build.SourceBranch) - $(build.date)'

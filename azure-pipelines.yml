@@ -1,7 +1,8 @@
 trigger:
+  branches:
+    include: ['*']
   tags:
-    include:
-      - v*
+    include: ['*']
 
 jobs:
   - job: 'Clippy'

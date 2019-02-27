@@ -89,7 +89,7 @@ jobs:
           MY_TAG=${MY_TAG#refs/tags/}
           echo $MY_TAG
           echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
-        displayName: "Create date variable"
+        displayName: "Create my tag variable"
       - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"

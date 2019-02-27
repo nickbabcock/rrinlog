@@ -120,7 +120,7 @@ jobs:
         inputs:
           gitHubConnection: 'nickbabcock'
           repositoryName: 'nickbabcock/rrinlog'
-          action: 'create'
+          action: 'edit'
           target: '$(build.sourceVersion)'
           tagSource: 'auto'
           tag: '$(Build.SourceBranch)'

@@ -120,7 +120,7 @@ jobs:
           rootFolderOrFile: '$(Build.BinariesDirectory)/rrinlog'
           archiveType: 'tar'
           tarCompression: 'gz'
-          archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/rrinlog-$(build.my_tag)-$(TARGET).tar.gz'
       - task: GithubRelease@0
         condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
         inputs:

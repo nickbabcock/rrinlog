@@ -121,3 +121,4 @@ jobs:
           assets: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
           title: '$(Build.SourceBranch) - $(build.date)'
           assetUploadMode: 'replace'
+          addChangeLog: false

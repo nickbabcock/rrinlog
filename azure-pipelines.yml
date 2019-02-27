@@ -85,6 +85,12 @@ jobs:
           echo "##vso[task.setvariable variable=build.date]$DATE"
         displayName: "Create date variable"
       - script: |
+          MY_TAG="$(Build.SourceBranch)"
+          MY_TAG=${MY_TAG#refs/tags/}
+          echo $MY_TAG
+          echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
+        displayName: "Create date variable"
+      - script: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
         displayName: Install rust
@@ -122,9 +128,9 @@ jobs:
           repositoryName: 'nickbabcock/rrinlog'
           action: 'edit'
           target: '$(build.sourceVersion)'
-          tagSource: 'auto'
-          tag: '$(Build.SourceBranch)'
-          assets: '$(Build.ArtifactStagingDirectory)/rrinlog-$(Build.SourceBranch)-$(TARGET).tar.gz'
-          title: '$(Build.SourceBranch) - $(build.date)'
+          tagSource: 'manual'
+          tag: '$(build.my_tag)'
+          assets: '$(Build.ArtifactStagingDirectory)/rrinlog-$(build.my_tag)-$(TARGET).tar.gz'
+          title: '$(build.my_tag) - $(build.date)'
           assetUploadMode: 'replace'
           addChangeLog: false

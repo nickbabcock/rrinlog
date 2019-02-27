@@ -1,7 +1,7 @@
 [package]
 authors = ["Nick Babcock <nbabcock19@hotmail.com>"]
 name = "rrinlog_core"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 chrono = "0.4"

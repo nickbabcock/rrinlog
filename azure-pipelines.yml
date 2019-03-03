@@ -10,10 +10,10 @@ jobs:
       vmImage: 'ubuntu-16.04'
     container: 'rust:latest'
     steps:
-      - script: |
-            rustup component add clippy
-            cargo clippy --all
-        displayName: Clippy
+      - script: rustup component add clippy
+        displayName: Install clippy
+      - script: cargo clippy --all
+        displayName: Run Clippy
 
   - job: 'Rustfmt'
     pool:
@@ -21,10 +21,10 @@ jobs:
     container: 'rust:latest'
     condition: eq(variables['Build.Reason'], 'PullRequest')
     steps:
-      - script: |
-            rustup component add rustfmt
-            cargo fmt --all -- --check
-        displayName: Rustfmt
+      - script: rustup component add rustfmt
+        displayName: Install Rustfmt
+      - script: cargo fmt --all -- --check
+        displayName: Run fmt
 
   - job: 'Test'
     strategy:

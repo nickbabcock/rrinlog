@@ -38,7 +38,7 @@ static BLOG_POST_QUERY: &'static str = r#"
 SELECT referer,
        Count(*) AS views
 FROM   logs
-WHERE  host = 'comments.nbsoftsolutions.com'
+WHERE  +host = 'comments.nbsoftsolutions.com'
        AND method = 'GET'
        AND path <> '/js/embed.min.js'
        AND epoch >= ?
@@ -63,7 +63,7 @@ SELECT (epoch / ?) * ? * 1000 AS ep,
        host,
        Count(*) AS views
 FROM   logs
-WHERE  host LIKE "%nbsoftsolutions.com"
+WHERE  +host LIKE "%nbsoftsolutions.com"
        AND epoch >= ?
        AND epoch < ?
 GROUP BY epoch / ?,

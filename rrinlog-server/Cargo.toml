@@ -19,7 +19,7 @@ version = "0.7"
 default-features = false
 
 [dependencies.uom]
-version = "0.22.2"
+version = "0.23.0"
 features = ["i64", "si"]
 
 [dependencies.chrono]

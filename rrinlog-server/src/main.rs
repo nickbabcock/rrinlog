@@ -24,7 +24,8 @@ mod errors;
 mod options;
 
 use actix_web::middleware::Logger;
-use actix_web::{http, server, App, HttpRequest, Json, Responder, State};
+use actix_web::web::{self, Data, Json};
+use actix_web::{App, HttpServer, Responder};
 use api::*;
 use chrono::prelude::*;
 use diesel::prelude::*;
@@ -37,17 +38,28 @@ use structopt::StructOpt;
 use uom::si::i64::*;
 use uom::si::time::{millisecond, second};
 
+macro_rules! create_app {
+    ($opts:expr) => {{
+        App::new()
+            .data($opts)
+            .wrap(Logger::default())
+            .route("/", web::to(index))
+            .route("/search", web::post().to(search))
+            .route("/query", web::post().to(query))
+    }};
+}
+
 #[derive(Debug, Clone)]
 struct RinState {
     pub db: String,
     pub ip: String,
 }
 
-fn index(_req: &HttpRequest<RinState>) -> impl Responder {
+fn index() -> impl Responder {
     "Hello world!"
 }
 
-fn search(data: Json<Search>) -> Json<SearchResponse> {
+fn search(data: Json<Search>) -> impl Responder {
     debug!("Search received: {:?}", data);
     Json(SearchResponse(vec![
         "blog_hits".to_string(),
@@ -56,8 +68,7 @@ fn search(data: Json<Search>) -> Json<SearchResponse> {
     ]))
 }
 
-fn query(data: (Json<Query>, State<RinState>)) -> Result<Json<QueryResponse>, Error> {
-    let (query, opt) = data;
+fn query(query: Json<Query>, opt: Data<RinState>) -> Result<Json<QueryResponse>, Error> {
     debug!("Search received: {:?}", query);
 
     // Acquire SQLite connection on each request. This can be considered inefficient, but since
@@ -217,15 +228,7 @@ fn init_logging() -> Result<(), log::SetLoggerError> {
         .try_init()
 }
 
-fn create_app(opts: RinState) -> App<RinState> {
-    App::with_state(opts)
-        .middleware(Logger::default())
-        .resource("/", |r| r.f(index))
-        .resource("/search", |r| r.method(http::Method::POST).with(search))
-        .resource("/query", |r| r.method(http::Method::POST).with(query))
-}
-
-fn main() {
+fn main() -> std::io::Result<()> {
     init_logging().expect("Logging to initialize");
     let opts = options::Opt::from_args();
     let (addr, state) = {
@@ -238,18 +241,18 @@ fn main() {
         )
     };
 
-    server::new(move || create_app(state.clone()))
-        .bind(addr)
-        .unwrap()
-        .run();
+    HttpServer::new(move || create_app!(state.clone()))
+        .bind(addr)?
+        .run()
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate actix_http;
+    extern crate actix_http_test;
     use super::*;
-    use actix_web::test::TestServer;
     use actix_web::HttpMessage;
-    use http::header;
+    use actix_web::{http::header, web, App};
     use std::str;
 
     #[test]
@@ -292,43 +295,42 @@ mod tests {
         assert_eq!([1, fill_time], actual[2]);
     }
 
+    fn create_test_server() -> actix_http_test::TestServerRuntime {
+        actix_http_test::TestServer::new(|| {
+            actix_http::HttpService::new(create_app!(RinState {
+                db: "../test-assets/test-access.db".to_string(),
+                ip: "127.0.0.2".to_string(),
+            }))
+        })
+    }
+
     #[test]
     fn test_root_results() {
-        let opt = RinState {
-            db: "Some db".to_string(),
-            ip: "Some ip".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
-        let request = srv.client(http::Method::GET, "/").finish().unwrap();
-        let response = srv.execute(request.send()).unwrap();
+        let mut srv = create_test_server();
+        let request = srv.get("/");
+        let mut response = srv.block_on(request.send()).unwrap();
 
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "text/plain");
 
-        let bytes = srv.execute(response.body()).unwrap();
+        let bytes = srv.block_on(response.body()).unwrap();
         assert_eq!(str::from_utf8(&bytes).unwrap(), "Hello world!");
     }
 
     #[test]
     fn test_search_results() {
-        let opt = RinState {
-            db: "Some db".to_string(),
-            ip: "Some ip".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let mut srv = create_test_server();
         let request = srv
-            .client(http::Method::POST, "/search")
+            .post("/search")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(r#"{"target":"something"}"#)
-            .unwrap();
-        let response = srv.execute(request.send()).unwrap();
+            .send_body(r#"{"target":"something"}"#);
+
+        let mut response = srv.block_on(request).unwrap();
 
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "application/json");
 
-        let bytes = srv.execute(response.body()).unwrap();
+        let bytes = srv.block_on(response.body()).unwrap();
         assert_eq!(
             str::from_utf8(&bytes).unwrap(),
             r#"["blog_hits","sites","outbound_data"]"#
@@ -337,16 +339,11 @@ mod tests {
 
     #[test]
     fn test_query_blog_results() {
-        let opt = RinState {
-            db: "../test-assets/test-access.db".to_string(),
-            ip: "127.0.0.2".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let mut srv = create_test_server();
         let request = srv
-            .client(http::Method::POST, "/query")
+            .post("/query")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(
+            .send_body(
                 r#"
 {
   "panelId": 1,
@@ -371,26 +368,20 @@ mod tests {
   "maxDataPoints": 550
 }
 "#,
-            )
-            .unwrap();
+            );
 
-        let response = srv.execute(request.send()).unwrap();
+        let response = srv.block_on(request).unwrap();
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "application/json");
     }
 
     #[test]
     fn test_query_sites_results() {
-        let opt = RinState {
-            db: "../test-assets/test-access.db".to_string(),
-            ip: "127.0.0.2".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let mut srv = create_test_server();
         let request = srv
-            .client(http::Method::POST, "/query")
+            .post("/query")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(
+            .send_body(
                 r#"
 {
   "panelId": 1,
@@ -415,10 +406,9 @@ mod tests {
   "maxDataPoints": 550
 }
 "#,
-            )
-            .unwrap();
+            );
 
-        let response = srv.execute(request.send()).unwrap();
+        let response = srv.block_on(request).unwrap();
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "application/json");
     }
@@ -426,16 +416,11 @@ mod tests {
     // Should not fail when the interval is less than a second
     #[test]
     fn test_query_sites_tiny_results() {
-        let opt = RinState {
-            db: "../test-assets/test-access.db".to_string(),
-            ip: "127.0.0.2".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let mut srv = create_test_server();
         let request = srv
-            .client(http::Method::POST, "/query")
+            .post("/query")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(
+            .send_body(
                 r#"
 {
   "panelId": 1,
@@ -460,26 +445,20 @@ mod tests {
   "maxDataPoints": 550
 }
 "#,
-            )
-            .unwrap();
+            );
 
-        let response = srv.execute(request.send()).unwrap();
+        let response = srv.block_on(request).unwrap();
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "application/json");
     }
 
     #[test]
     fn test_query_outbound_results() {
-        let opt = RinState {
-            db: "../test-assets/test-access.db".to_string(),
-            ip: "127.0.0.2".to_string(),
-        };
-
-        let mut srv = TestServer::with_factory(move || create_app(opt.clone()));
+        let mut srv = create_test_server();
         let request = srv
-            .client(http::Method::POST, "/query")
+            .post("/query")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(
+            .send_body(
                 r#"
 {
   "panelId": 1,
@@ -504,10 +483,9 @@ mod tests {
   "maxDataPoints": 550
 }
 "#,
-            )
-            .unwrap();
+            );
 
-        let response = srv.execute(request.send()).unwrap();
+        let response = srv.block_on(request).unwrap();
         assert!(response.status().is_success());
         assert_eq!(response.content_type(), "application/json");
     }

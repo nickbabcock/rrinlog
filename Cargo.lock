@@ -80,7 +80,7 @@ dependencies = [
 
 [[package]]
 name = "actix-http-test"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "actix-codec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1510,7 +1510,7 @@ name = "rrinlog-server"
 version = "0.1.1"
 dependencies = [
  "actix-http 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "actix-http-test 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "actix-http-test 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2158,7 +2158,7 @@ dependencies = [
 "checksum actix-codec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9f2c11af4b06dc935d8e1b1491dad56bfb32febc49096a91e773f8535c176453"
 "checksum actix-connect 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d7fbab0d79b2f3415a79570e3db12eaa75c26239541e613b832655145a5e9488"
 "checksum actix-http 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "29c11d33772c790e9aeb2e024834bc084f7496598482908e2424efd768c912b6"
-"checksum actix-http-test 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7e4ea476df1fe681a9bd2fcc37eff9393fad4a0430975e46d7c657907351f250"
+"checksum actix-http-test 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "92c0b021449cb043876c30e0b555844125fefd4b90568467d12c4ba3db751a64"
 "checksum actix-router 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "23224bb527e204261d0291102cb9b52713084def67d94f7874923baefe04ccf7"
 "checksum actix-rt 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "61e09627004cb25149fd177c4a062d2061c4ec40aae5820ecd37a87195e759f8"
 "checksum actix-server 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ba8c936356c882420eab87051b12ca1926dc42348863d05fff7eb151df9cddbb"

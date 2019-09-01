@@ -94,15 +94,7 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
         displayName: Install rust
-      - script: |
-          set -eou
-          D=$(mktemp -d)
-          git clone https://github.com/rust-embedded/cross.git "$D"
-          cd "$D"
-          curl -O -L "https://gist.githubusercontent.com/nickbabcock/c7bdc8e5974ed9956abf46ffd7dc13ff/raw/e4af1c4b018a8b3e6f516b3d0fb3f5569cf70d1a/patch"
-          git apply patch
-          cargo install --path .
-          rm -rf "$D"
+      - script: cargo install --git https://github.com/rust-embedded/cross
         displayName: Install cross
       - script: cross build --release --all --target $TARGET
         displayName: Build

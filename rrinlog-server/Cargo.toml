@@ -24,7 +24,7 @@ features = ["i64", "si"]
 
 [dependencies.chrono]
 features = ["serde"]
-version = "0.4.0"
+version = "0.4.8"
 
 [dependencies.diesel]
 features = ["sqlite"]

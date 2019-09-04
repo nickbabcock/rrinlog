@@ -4,7 +4,7 @@ name = "rrinlog"
 version = "0.1.1"
 
 [dependencies]
-chrono = "0.4.0"
+chrono = "0.4.9"
 env_logger = "0.6.1"
 failure = "0.1.5"
 log = "0.4.8"

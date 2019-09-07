@@ -18,7 +18,7 @@ features = ["bundled"]
 version = "0.12.0"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 
 [[bench]]
 name = "rrinlog"

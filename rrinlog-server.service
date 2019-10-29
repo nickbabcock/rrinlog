@@ -9,7 +9,6 @@ After=network.target network-online.target
 Type=simple
 WorkingDirectory=/tank/containers/rrinlog
 ExecStart=/tank/containers/rrinlog/rrinlog-server --ip <enter ip>
-StandardOutput=journal+console
 Environment="RUST_LOG=info"
 
 [Install]

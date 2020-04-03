@@ -7,7 +7,7 @@ trigger:
 jobs:
   - job: 'Clippy'
     pool:
-      vmImage: 'ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
     container: 'rust:latest'
     steps:
       - script: rustup component add clippy
@@ -17,7 +17,7 @@ jobs:
 
   - job: 'Rustfmt'
     pool:
-      vmImage: 'ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
     container: 'rust:latest'
     condition: eq(variables['Build.Reason'], 'PullRequest')
     steps:
@@ -30,19 +30,19 @@ jobs:
     strategy:
       matrix:
         windows-stable:
-          imageName: 'vs2017-win2016'
+          imageName: 'windows-latest'
           rustup_toolchain: stable
         mac-stable:
-          imageName: 'macos-10.13'
+          imageName: 'macos-latest'
           rustup_toolchain: stable
         linux-stable:
-          imageName: 'ubuntu-16.04'
+          imageName: 'ubuntu-latest'
           rustup_toolchain: stable
         linux-beta:
-          imageName: 'ubuntu-16.04'
+          imageName: 'ubuntu-latest'
           rustup_toolchain: beta
         linux-nightly:
-          imageName: 'ubuntu-16.04'
+          imageName: 'ubuntu-latest'
           rustup_toolchain: nightly
     pool:
       vmImage: $(imageName)
@@ -76,13 +76,13 @@ jobs:
       matrix:
         musl:
           target: 'x86_64-unknown-linux-musl'
-          imageName: 'ubuntu-16.04'
+          imageName: 'ubuntu-latest'
         gnu:
           target: 'x86_64-unknown-linux-gnu'
-          imageName: 'ubuntu-16.04'
+          imageName: 'ubuntu-latest'
         mac:
           target: 'x86_64-apple-darwin'
-          imageName: 'macos-10.13'
+          imageName: 'macos-latest'
     pool:
       vmImage: $(imageName)
     steps:

@@ -34,5 +34,5 @@ version = "1"
 path = ".."
 
 [dev-dependencies]
-actix-http-test = "0.2"
+actix-http-test = "1.0"
 actix-http = "0.2"

@@ -6,7 +6,7 @@ version = "0.1.1"
 [dependencies]
 env_logger = "0.7.1"
 failure = "0.1.8"
-itertools = "0.9.0"
+itertools = "0.10.1"
 log = "0.4.11"
 serde = "1.0.114"
 serde_derive = "1.0.103"
